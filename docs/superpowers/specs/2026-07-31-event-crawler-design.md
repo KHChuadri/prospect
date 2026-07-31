@@ -31,14 +31,67 @@ Both are deferred because they are downstream of extraction quality. A digest of
 poorly-extracted events just delivers noise faster. Ship v1, run it against real
 sites for a week, then build these.
 
+### v3 — site discovery
+
+The v1 crawler reads a hand-configured list of sites. Note that it does already
+discover *events* it was never told about: the Eventbrite source asks "what is
+happening in Sydney?" rather than naming events. What it cannot do is find new
+**sites**.
+
+7. **Search-driven discovery.** A `type: search` source issues location and
+   topic queries against a search API (Brave Search, Serper, or Google Custom
+   Search — all have free tiers) and feeds each result URL through the existing
+   generic path: fetch → clean → extract → four gates. One new `Source`
+   implementation, no new pipeline.
+
+   ```yaml
+     - name: discover-sydney
+       type: search
+       queries:
+         - "networking event Sydney {month} {year}"
+         - "graduate careers panel Sydney {month}"
+       max_results: 20
+   ```
+
+   Bounded by construction: 1 search call plus at most 20 fetches and 20 LLM
+   calls per query per run. Run weekly rather than 12-hourly. Gates 1 and 4
+   absorb the heavy overlap between runs.
+
+8. **Human-approved site proposals.** A search result is a single page; a good
+   site deserves recurring crawls of its whole listing. When a discovered page's
+   domain is not already a configured source, it is written to a
+   `discovered_sources` table rather than trusted. `/events` gains a small "New
+   sources found" section: approve, and the domain joins the crawl list with a
+   `link_pattern`; reject, and it is never proposed again.
+
+   This follows the accept/reject idiom already used by `/recommendations` and
+   the follow-up approval flow. It matters more here than elsewhere: an
+   auto-added source means the crawler begins hitting a site nobody vetted,
+   under the user's IP and User-Agent.
+
+**Why v3 and not v1:** discovery multiplies whatever the extraction quality
+happens to be. At 60% accuracy it yields more 60%-accurate results and a larger
+mess to triage. Reach good extraction on three known sites first, then widen.
+
 ### Explicitly out of scope
 
 - **LinkedIn Events.** Requires login, is aggressively anti-bot, and scraping it
   violates their Terms of Service with real account-ban risk. If LinkedIn events
   are wanted later, the legitimate path is subscribing to LinkedIn's event
   notification emails and parsing them through the **existing Gmail pipeline**.
-- **Open-ended web crawling.** The crawler reads a configured listing page and
-  follows links one hop to event detail pages. It does not discover new sites.
+- **True spidering** — following outbound links recursively to discover sites.
+  Rejected, permanently, not deferred. Two reasons. **Cost without yield:** a
+  page's nature cannot be known without reading it, and reading costs an LLM
+  call; three hops from a university events page reaches tens of thousands of
+  staff profiles, degree listings and news archives, and approximately zero
+  additional events. **Crawler traps:** event calendars expose a "next month"
+  link, which yields an infinite URL space that never errors and never
+  terminates. Containing this requires frontier management, URL prioritisation
+  and per-domain budgets — the problem Scrapy exists to solve, and far outside
+  this feature's value. Search-driven discovery (v3) reaches the same goal by
+  querying an index someone else already built.
+- **Open-ended crawl depth.** The crawler follows links exactly one hop, from a
+  configured listing page to event detail pages.
 
 ---
 
@@ -503,7 +556,8 @@ smoke test marked `@pytest.mark.live` and skipped by default.
 
 | Item | Status |
 |---|---|
-| `EVENTBRITE_TOKEN` | **Required** — free, from eventbrite.com/platform. The only new credential. |
+| `EVENTBRITE_TOKEN` | **Required** — free, from eventbrite.com/platform. The only new credential for v1. |
+| Search API key | Not needed for v1. Required only if v3 site discovery (§1) is built. |
 | `LLM_API_KEY` | Already configured (OpenRouter). |
 | `pyyaml` | New dependency, one line in `requirements.txt`. |
 | `.superpowers/` in `.gitignore` | Not yet present at repo root. |
