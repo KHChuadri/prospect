@@ -151,4 +151,50 @@ def create_app(settings: Settings, conn_factory, graph) -> FastAPI:
         finally:
             conn.close()
 
+    def _decide(event_id: int, status: str, authorization: Optional[str]):
+        uid = require_user(authorization)
+        conn = conn_factory()
+        try:
+            if db.get_event(conn, event_id) is None:
+                raise HTTPException(404, "not found")
+            db.set_event_decision(conn, uid, event_id, status)
+            conn.commit()
+            return db.get_event(conn, event_id)
+        finally:
+            conn.close()
+
+    @app.get("/events")
+    def list_events(saved: bool = False,
+                    authorization: Optional[str] = Header(default=None)):
+        uid = require_user(authorization)
+        conn = conn_factory()
+        try:
+            return db.list_events(conn, uid, saved=saved)
+        finally:
+            conn.close()
+
+    @app.post("/events/{event_id}/interested")
+    def mark_interested(event_id: int,
+                        authorization: Optional[str] = Header(default=None)):
+        return _decide(event_id, "interested", authorization)
+
+    @app.post("/events/{event_id}/dismiss")
+    def dismiss_event(event_id: int,
+                      authorization: Optional[str] = Header(default=None)):
+        return _decide(event_id, "dismissed", authorization)
+
+    @app.delete("/events/{event_id}/decision")
+    def undo_event_decision(event_id: int,
+                            authorization: Optional[str] = Header(default=None)):
+        uid = require_user(authorization)
+        conn = conn_factory()
+        try:
+            if db.get_event(conn, event_id) is None:
+                raise HTTPException(404, "not found")
+            db.clear_event_decision(conn, uid, event_id)
+            conn.commit()
+            return db.get_event(conn, event_id)
+        finally:
+            conn.close()
+
     return app
