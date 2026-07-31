@@ -1,0 +1,22 @@
+# Sites the event crawler visits. Edit by hand.
+#
+# type: generic     — an HTML listing page; links matching link_pattern are
+#                     followed one hop and extracted with the LLM.
+# type: eventbrite  — the Eventbrite API; returns structured data, no LLM call.
+#
+# timezone is REQUIRED. Pages print local times with no offset, and starts_at
+# is an absolute instant — get this wrong and every event shows on the wrong day.
+
+sources:
+  # Whole-university feed: mostly concerts, exhibitions and public lectures,
+  # so the is_career_event gate does real filtering here. Verified 2026-07-31:
+  # server-rendered, robots.txt permits /event/*.
+  - name: unsw-events
+    type: generic
+    url: https://www.events.unsw.edu.au/
+    link_pattern: "/event/"
+    timezone: Australia/Sydney
+
+  - name: eventbrite
+    type: eventbrite
+    timezone: Australia/Sydney
