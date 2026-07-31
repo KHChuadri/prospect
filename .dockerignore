@@ -1,0 +1,16 @@
+**/node_modules
+**/.next
+**/.swc
+**/bin
+**/obj
+**/.venv
+**/.pytest_cache
+**/__pycache__
+**/.understand-anything
+**/tsconfig.tsbuildinfo
+.git
+.gitignore
+
+# Dev-only env files — real config comes from docker-compose.
+**/.env
+**/.env.local

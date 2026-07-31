@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: jobtracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jobtracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_AGENT_URL: /agent
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # --- backend ---
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=jobtracker;Username=postgres;Password=postgres
+      JwtSettings__Issuer: JobApplicationTracker
+      JwtSettings__Audience: JobApplicationTrackerUsers
+      Cors__Origins: ${APP_ORIGIN:-http://localhost:8080}
+      # --- agent ---
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/jobtracker
+      JWT_ISSUER: JobApplicationTracker
+      JWT_AUDIENCE: JobApplicationTrackerUsers
+      CLIENT_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
+      # The backend signs JWTs and the agent verifies them — one variable
+      # feeds both so they can never drift apart.
+      JwtSettings__SecretKey: ${JWT_SECRET:-dev-only-secret-change-in-production-min-32-chars}
+      JWT_SIGNING_KEY: ${JWT_SECRET:-dev-only-secret-change-in-production-min-32-chars}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-meta-llama/llama-3.3-70b-instruct:free}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      FOLLOWUP_AGE_DAYS: ${FOLLOWUP_AGE_DAYS:-7}
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID:-}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET:-}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN:-}
+      GMAIL_LABEL: ${GMAIL_LABEL:-job-alerts}
+      RECO_USER_ID: ${RECO_USER_ID:-1}
+      RECO_POLL_MINUTES: ${RECO_POLL_MINUTES:-15}
+
+volumes:
+  pgdata:

@@ -1,0 +1,21 @@
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	# Agent routes live at the root of the FastAPI app (/follow-ups,
+	# /recommendations), so handle_path strips the /agent prefix.
+	handle_path /agent/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# Backend controllers are already under /api — forward the path as-is.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:5000
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
