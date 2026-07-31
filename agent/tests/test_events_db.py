@@ -126,11 +126,26 @@ def test_successful_crawl_clears_a_previous_error(schema):
         assert cur.fetchone()[0] is None
 
 
+def _apply(conn, *, user_id, company):
+    """Track an application against a company.
+
+    "JobApplications"."UserId" is a foreign key to "Users", so the owning user
+    has to exist first. The conn fixture rolls back, so both rows disappear
+    when the test ends.
+    """
+    conn.execute(
+        'INSERT INTO "Users" ("Id","Email","PasswordHash") VALUES (%s,%s,%s) '
+        'ON CONFLICT ("Id") DO NOTHING',
+        (user_id, f"user{user_id}@test.local", "x"))
+    conn.execute(
+        'INSERT INTO "JobApplications" ("UserId","Company","Role","Status","AppliedAt") '
+        "VALUES (%s,%s,'Engineer',0,now())",
+        (user_id, company))
+
+
 def test_company_match_fires_on_exact_name(schema):
     _mk(schema, uid="cm1", orgs=["Monzo"])
-    schema.execute(
-        'INSERT INTO "JobApplications" ("UserId","Company","Role","Status","AppliedAt") '
-        "VALUES (1,'Monzo','Engineer',0,now())")
+    _apply(schema, user_id=1, company="Monzo")
     assert db.list_events(schema, user_id=1)[0]["company_match"] is True
 
 
@@ -138,9 +153,7 @@ def test_company_match_survives_a_legal_suffix(schema):
     # The page says "Monzo Bank Ltd"; the user tracks "Monzo". Exact
     # comparison would miss this and the feature would silently under-fire.
     _mk(schema, uid="cm2", orgs=["Monzo Bank Ltd"])
-    schema.execute(
-        'INSERT INTO "JobApplications" ("UserId","Company","Role","Status","AppliedAt") '
-        "VALUES (1,'Monzo Bank','Engineer',0,now())")
+    _apply(schema, user_id=1, company="Monzo Bank")
     assert db.list_events(schema, user_id=1)[0]["company_match"] is True
 
 
@@ -151,9 +164,7 @@ def test_company_match_is_false_for_untracked_companies(schema):
 
 def test_company_match_is_per_user(schema):
     _mk(schema, uid="cm4", orgs=["Monzo"])
-    schema.execute(
-        'INSERT INTO "JobApplications" ("UserId","Company","Role","Status","AppliedAt") '
-        "VALUES (1,'Monzo','Engineer',0,now())")
+    _apply(schema, user_id=1, company="Monzo")
     assert db.list_events(schema, user_id=2)[0]["company_match"] is False
 
 
@@ -162,7 +173,5 @@ def test_company_match_needs_no_recrawl_to_start_firing(schema):
     # application existed lights up as soon as the application is added.
     _mk(schema, uid="cm5", orgs=["Monzo"])
     assert db.list_events(schema, user_id=1)[0]["company_match"] is False
-    schema.execute(
-        'INSERT INTO "JobApplications" ("UserId","Company","Role","Status","AppliedAt") '
-        "VALUES (1,'Monzo','Engineer',0,now())")
+    _apply(schema, user_id=1, company="Monzo")
     assert db.list_events(schema, user_id=1)[0]["company_match"] is True
