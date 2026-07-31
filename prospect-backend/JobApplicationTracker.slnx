@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/JobApplicationTracker/JobApplicationTracker.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/JobApplicationTracker.Tests/">
+    <Project Path="tests/JobApplicationTracker.Tests/JobApplicationTracker.Tests.csproj" />
+  </Folder>
+</Solution>

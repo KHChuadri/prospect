@@ -1,0 +1,1999 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "4f9593cd885d26be0a3d7a8ad9c98a3965788472",
+  "generatedAt": "2026-07-06T07:34:10.638Z",
+  "files": {
+    ".env.example": {
+      "filePath": ".env.example",
+      "contentHash": "2a81c6205feb44f42388b984c67cba569691ead2fe6e51a26eb40f8c9df26a64",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 30,
+      "hasStructuralAnalysis": true
+    },
+    "ARCHITECTURE.md": {
+      "filePath": "ARCHITECTURE.md",
+      "contentHash": "29df726c6f08915913465bacda1f9c997b92d3ac53f30566be15dbd8cf6c006a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 108,
+      "hasStructuralAnalysis": true
+    },
+    "draft_now.py": {
+      "filePath": "draft_now.py",
+      "contentHash": "7efab0640b00f0815c2ac15e98e8b31756dd77aeaae4859bb1330dbd06e5327f",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "followup_agent.main",
+          "specifiers": [
+            "graph",
+            "settings",
+            "_conn_factory"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "batch"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/__init__.py": {
+      "filePath": "followup_agent/__init__.py",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/ai.py": {
+      "filePath": "followup_agent/ai.py",
+      "contentHash": "22b8fec73c7d6c102058c3afeda4757003ea1d232a86aa5bad5be75aa16fb30f",
+      "functions": [
+        {
+          "name": "create_ai_router",
+          "params": [
+            "settings",
+            "conn_factory"
+          ],
+          "returnType": "APIRouter",
+          "exported": true,
+          "lineCount": 101
+        }
+      ],
+      "classes": [
+        {
+          "name": "TextBody",
+          "methods": [],
+          "properties": [
+            "text"
+          ],
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter",
+            "Header",
+            "HTTPException"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "auth",
+            "db",
+            "llm"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "TextBody",
+        "create_ai_router"
+      ],
+      "totalLines": 113,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/api.py": {
+      "filePath": "followup_agent/api.py",
+      "contentHash": "280fe24653206804920caa18a165767dcb765288a44623e44484b4e4bb18e33b",
+      "functions": [
+        {
+          "name": "create_app",
+          "params": [
+            "settings",
+            "conn_factory",
+            "graph"
+          ],
+          "returnType": "FastAPI",
+          "exported": true,
+          "lineCount": 86
+        }
+      ],
+      "classes": [
+        {
+          "name": "ApproveBody",
+          "methods": [],
+          "properties": [
+            "recipient_email",
+            "subject",
+            "body"
+          ],
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI",
+            "Header",
+            "HTTPException"
+          ]
+        },
+        {
+          "source": "fastapi.middleware.cors",
+          "specifiers": [
+            "CORSMiddleware"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        },
+        {
+          "source": "langgraph.types",
+          "specifiers": [
+            "Command"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "auth",
+            "db",
+            "ai"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "ApproveBody",
+        "create_app"
+      ],
+      "totalLines": 103,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/auth.py": {
+      "filePath": "followup_agent/auth.py",
+      "contentHash": "a4ca4b7d6d1dc50173842d4f9ada6bfd406cebab86a0721cd9a92f9656e4e389",
+      "functions": [
+        {
+          "name": "user_id_from_token",
+          "params": [
+            "token",
+            "settings"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 18
+        }
+      ],
+      "classes": [
+        {
+          "name": "AuthError",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "imports": [
+        {
+          "source": "jwt",
+          "specifiers": [
+            "jwt"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "AuthError",
+        "user_id_from_token"
+      ],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/batch.py": {
+      "filePath": "followup_agent/batch.py",
+      "contentHash": "44cb1396d24e6e250e1d0e2031cd8f98e3b97c539947a6a1f138ed32b74bd7c2",
+      "functions": [
+        {
+          "name": "run_batch",
+          "params": [
+            "conn",
+            "graph",
+            "age_days",
+            "now"
+          ],
+          "returnType": "list[int]",
+          "exported": true,
+          "lineCount": 29
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "db",
+            "rules"
+          ]
+        }
+      ],
+      "exports": [
+        "run_batch"
+      ],
+      "totalLines": 35,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/config.py": {
+      "filePath": "followup_agent/config.py",
+      "contentHash": "1a192fdf775d3ff0adb7d26d2632610487986c13840dccbae868223e875f605b",
+      "functions": [
+        {
+          "name": "load_settings",
+          "params": [],
+          "returnType": "Settings",
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "classes": [
+        {
+          "name": "Settings",
+          "methods": [],
+          "properties": [
+            "database_url",
+            "openrouter_api_key",
+            "openrouter_model",
+            "jwt_signing_key",
+            "jwt_issuer",
+            "jwt_audience",
+            "smtp_host",
+            "smtp_port",
+            "smtp_user",
+            "smtp_password",
+            "smtp_from",
+            "followup_age_days",
+            "client_origin",
+            "llm_base_url",
+            "llm_api_key",
+            "llm_model"
+          ],
+          "exported": true,
+          "lineCount": 20
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "load_dotenv"
+          ]
+        }
+      ],
+      "exports": [
+        "Settings",
+        "load_settings"
+      ],
+      "totalLines": 54,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/db.py": {
+      "filePath": "followup_agent/db.py",
+      "contentHash": "de8ff784626991d2cda89206845a21e21f9e8d9ca8a4ccff00aa3dca69e7ccdd",
+      "functions": [
+        {
+          "name": "init_schema",
+          "params": [
+            "conn"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "fetch_candidate_apps",
+          "params": [
+            "conn"
+          ],
+          "returnType": "list[AppRow]",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "existing_followup_app_ids",
+          "params": [
+            "conn"
+          ],
+          "returnType": "set[int]",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "create_follow_up",
+          "params": [
+            "conn",
+            "app_id",
+            "user_id",
+            "thread_id",
+            "subject",
+            "body",
+            "reason"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "list_follow_ups",
+          "params": [
+            "conn",
+            "user_id",
+            "status"
+          ],
+          "returnType": "list[dict]",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "get_follow_up",
+          "params": [
+            "conn",
+            "follow_up_id",
+            "user_id",
+            "for_update"
+          ],
+          "returnType": "Optional[dict]",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "update_follow_up",
+          "params": [
+            "conn",
+            "follow_up_id",
+            "**fields"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "init_ai_schema",
+          "params": [
+            "conn"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "upsert_resume",
+          "params": [
+            "conn",
+            "user_id",
+            "text"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "get_resume",
+          "params": [
+            "conn",
+            "user_id"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "upsert_jd",
+          "params": [
+            "conn",
+            "app_id",
+            "user_id",
+            "text"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "get_app_ai",
+          "params": [
+            "conn",
+            "app_id",
+            "user_id"
+          ],
+          "returnType": "Optional[dict]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "save_match",
+          "params": [
+            "conn",
+            "app_id",
+            "user_id",
+            "match_json"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "save_optimized",
+          "params": [
+            "conn",
+            "app_id",
+            "user_id",
+            "text"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "psycopg",
+          "specifiers": [
+            "psycopg"
+          ]
+        },
+        {
+          "source": "psycopg.rows",
+          "specifiers": [
+            "dict_row"
+          ]
+        },
+        {
+          "source": "psycopg.types.json",
+          "specifiers": [
+            "Json"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow",
+            "ELIGIBLE_STATUSES"
+          ]
+        }
+      ],
+      "exports": [
+        "init_schema",
+        "fetch_candidate_apps",
+        "existing_followup_app_ids",
+        "create_follow_up",
+        "list_follow_ups",
+        "get_follow_up",
+        "update_follow_up",
+        "init_ai_schema",
+        "upsert_resume",
+        "get_resume",
+        "upsert_jd",
+        "get_app_ai",
+        "save_match",
+        "save_optimized"
+      ],
+      "totalLines": 172,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/graph.py": {
+      "filePath": "followup_agent/graph.py",
+      "contentHash": "bdcc88f47dd3ec124e38385f53a986117b05e625bafed80004ab596816e9eb4b",
+      "functions": [
+        {
+          "name": "build_graph",
+          "params": [
+            "checkpointer",
+            "assess_fn",
+            "send_fn"
+          ],
+          "exported": true,
+          "lineCount": 51
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langgraph.graph",
+          "specifiers": [
+            "StateGraph",
+            "START",
+            "END"
+          ]
+        },
+        {
+          "source": "langgraph.types",
+          "specifiers": [
+            "interrupt"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow",
+            "FollowUpState"
+          ]
+        }
+      ],
+      "exports": [
+        "build_graph"
+      ],
+      "totalLines": 57,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/llm.py": {
+      "filePath": "followup_agent/llm.py",
+      "contentHash": "552f22fd879cfb8dacf4593c37dc9bd082082006eb7e813722863257fe50d908",
+      "functions": [
+        {
+          "name": "_prompt",
+          "params": [
+            "app"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_chat",
+          "params": [
+            "settings"
+          ],
+          "returnType": "ChatOpenAI",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "assess_and_draft",
+          "params": [
+            "app",
+            "settings"
+          ],
+          "returnType": "Draft",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "extract",
+          "params": [
+            "text",
+            "settings"
+          ],
+          "returnType": "Extraction",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "match",
+          "params": [
+            "resume_text",
+            "jd_text",
+            "settings"
+          ],
+          "returnType": "MatchResult",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "optimize",
+          "params": [
+            "resume_text",
+            "jd_text",
+            "settings"
+          ],
+          "returnType": "OptimizedResume",
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_openai",
+          "specifiers": [
+            "ChatOpenAI"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow",
+            "Draft",
+            "Extraction",
+            "MatchResult",
+            "OptimizedResume"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "_prompt",
+        "_chat",
+        "assess_and_draft",
+        "extract",
+        "match",
+        "optimize"
+      ],
+      "totalLines": 88,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/mailer.py": {
+      "filePath": "followup_agent/mailer.py",
+      "contentHash": "7d15a7d6c98a920bd2833d1903aef638ca4c80a09ddbec55d98a95200e6f540e",
+      "functions": [
+        {
+          "name": "send_email",
+          "params": [
+            "settings",
+            "to",
+            "subject",
+            "body"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "smtplib",
+          "specifiers": [
+            "smtplib"
+          ]
+        },
+        {
+          "source": "email.message",
+          "specifiers": [
+            "EmailMessage"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "send_email"
+      ],
+      "totalLines": 17,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/main.py": {
+      "filePath": "followup_agent/main.py",
+      "contentHash": "d446303ba90e16ef077bb0d9814aef5753f6f647ea1f083c8c04e76f95b8ea4e",
+      "functions": [
+        {
+          "name": "_assess_fn",
+          "params": [
+            "app"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_send_fn",
+          "params": [
+            "to",
+            "subject",
+            "body"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_conn_factory",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_nightly_job",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "_SerializedGraph",
+          "methods": [
+            "__init__",
+            "invoke"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        }
+      ],
+      "imports": [
+        {
+          "source": "threading",
+          "specifiers": [
+            "threading"
+          ]
+        },
+        {
+          "source": "psycopg",
+          "specifiers": [
+            "psycopg"
+          ]
+        },
+        {
+          "source": "apscheduler.schedulers.background",
+          "specifiers": [
+            "BackgroundScheduler"
+          ]
+        },
+        {
+          "source": "langgraph.checkpoint.postgres",
+          "specifiers": [
+            "PostgresSaver"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "api",
+            "batch",
+            "db",
+            "llm",
+            "mailer",
+            "scheduler"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "load_settings"
+          ]
+        },
+        {
+          "source": "followup_agent.graph",
+          "specifiers": [
+            "build_graph"
+          ]
+        }
+      ],
+      "exports": [
+        "_assess_fn",
+        "_send_fn",
+        "_SerializedGraph",
+        "_conn_factory",
+        "_nightly_job"
+      ],
+      "totalLines": 76,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/models.py": {
+      "filePath": "followup_agent/models.py",
+      "contentHash": "0377e31ca242156938d382440c170d9ae53e4b025bd288a80bfe26aa9ffcbca4",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AppRow",
+          "methods": [],
+          "properties": [
+            "id",
+            "user_id",
+            "company",
+            "role",
+            "status",
+            "applied_at"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "Draft",
+          "methods": [],
+          "properties": [
+            "warranted",
+            "reason",
+            "subject",
+            "body"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "Extraction",
+          "methods": [],
+          "properties": [
+            "company",
+            "role",
+            "location",
+            "salary",
+            "requirements",
+            "ok"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "MatchResult",
+          "methods": [],
+          "properties": [
+            "score",
+            "missing",
+            "matched",
+            "suggestions"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "OptimizedResume",
+          "methods": [],
+          "properties": [
+            "optimized_resume"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "FollowUpState",
+          "methods": [],
+          "properties": [
+            "app",
+            "warranted",
+            "reason",
+            "draft_subject",
+            "draft_body",
+            "decision",
+            "recipient_email"
+          ],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional",
+            "TypedDict"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        }
+      ],
+      "exports": [
+        "AppRow",
+        "Draft",
+        "Extraction",
+        "MatchResult",
+        "OptimizedResume",
+        "FollowUpState"
+      ],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/rules.py": {
+      "filePath": "followup_agent/rules.py",
+      "contentHash": "2c7b79ef3e49730c9b1f0fc3de7dc5661989624a757ca7a1694760e27a414741",
+      "functions": [
+        {
+          "name": "eligible_apps",
+          "params": [
+            "apps",
+            "existing_followup_app_ids",
+            "now",
+            "age_days"
+          ],
+          "returnType": "list[AppRow]",
+          "exported": true,
+          "lineCount": 16
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow",
+            "ELIGIBLE_STATUSES"
+          ]
+        }
+      ],
+      "exports": [
+        "eligible_apps"
+      ],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    "followup_agent/scheduler.py": {
+      "filePath": "followup_agent/scheduler.py",
+      "contentHash": "21bf3f6fcfe8cd932812cac6b1fe3e7f80851e2973e5bdc25d390f448cf89175",
+      "functions": [
+        {
+          "name": "start_nightly",
+          "params": [
+            "scheduler_obj",
+            "job"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [
+        "start_nightly"
+      ],
+      "totalLines": 3,
+      "hasStructuralAnalysis": true
+    },
+    "pytest.ini": {
+      "filePath": "pytest.ini",
+      "contentHash": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": false
+    },
+    "requirements.txt": {
+      "filePath": "requirements.txt",
+      "contentHash": "04daf01d3a442dc9fa90e088d4e0020da5bc8bb2f0f2ed6e75836805646cc612",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 12,
+      "hasStructuralAnalysis": false
+    },
+    "run.sh": {
+      "filePath": "run.sh",
+      "contentHash": "501b090ce37af645301add252585b5d6177f81a2f2cec217a777a41c5e304527",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    "tests/conftest.py": {
+      "filePath": "tests/conftest.py",
+      "contentHash": "e73ede27a676f382e734f181b8b79e951827796b3b62c0858e6789cb3e0cb5c6",
+      "functions": [
+        {
+          "name": "conn",
+          "params": [],
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "psycopg",
+          "specifiers": [
+            "psycopg"
+          ]
+        }
+      ],
+      "exports": [
+        "conn"
+      ],
+      "totalLines": 23,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_ai.py": {
+      "filePath": "tests/test_ai.py",
+      "contentHash": "39aed45ff34d47d50e85b67883abda6e600881b11d7a32d520e97188e383b2cf",
+      "functions": [
+        {
+          "name": "settings",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "token",
+          "params": [
+            "s",
+            "uid"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "make_client",
+          "params": [],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "test_extract_requires_auth",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_extract_returns_fields",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_extract_llm_error_returns_502",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_match_needs_resume",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "test_match_needs_jd",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_match_computes_and_caches",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "test_match_returns_cache_without_calling_llm",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [
+        {
+          "name": "FakeConn",
+          "methods": [
+            "commit",
+            "close"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "dt"
+          ]
+        },
+        {
+          "source": "jwt",
+          "specifiers": [
+            "jwt"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        },
+        {
+          "source": "fastapi.testclient",
+          "specifiers": [
+            "TestClient"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "ai",
+            "db",
+            "llm"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "Extraction",
+            "MatchResult"
+          ]
+        }
+      ],
+      "exports": [
+        "settings",
+        "token",
+        "FakeConn",
+        "make_client",
+        "test_extract_requires_auth",
+        "test_extract_returns_fields",
+        "test_extract_llm_error_returns_502",
+        "test_match_needs_resume",
+        "test_match_needs_jd",
+        "test_match_computes_and_caches",
+        "test_match_returns_cache_without_calling_llm"
+      ],
+      "totalLines": 107,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_api.py": {
+      "filePath": "tests/test_api.py",
+      "contentHash": "8e311e8de71e9bb5a9b4f869b8f8c80270fcdfdfa06ee005402de1118ed7bd09",
+      "functions": [
+        {
+          "name": "settings",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "token",
+          "params": [
+            "s",
+            "uid"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "client",
+          "params": [
+            "monkeypatch",
+            "row"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "test_list_requires_auth",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_list_returns_rows",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_approve_resumes_graph_and_marks_sent",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_reject_marks_rejected",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_approve_rejects_non_pending",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "FakeGraph",
+          "methods": [
+            "__init__",
+            "invoke"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "dt"
+          ]
+        },
+        {
+          "source": "jwt",
+          "specifiers": [
+            "jwt"
+          ]
+        },
+        {
+          "source": "fastapi.testclient",
+          "specifiers": [
+            "TestClient"
+          ]
+        },
+        {
+          "source": "langgraph.types",
+          "specifiers": [
+            "Command"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "api",
+            "db"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "settings",
+        "token",
+        "FakeGraph",
+        "client",
+        "test_list_requires_auth",
+        "test_list_returns_rows",
+        "test_approve_resumes_graph_and_marks_sent",
+        "test_reject_marks_rejected",
+        "test_approve_rejects_non_pending"
+      ],
+      "totalLines": 95,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_auth.py": {
+      "filePath": "tests/test_auth.py",
+      "contentHash": "b518347dffb22b61ce6781e276d9536240b7afcc14dd74b388cc639632a8b231",
+      "functions": [
+        {
+          "name": "settings",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "make_token",
+          "params": [
+            "s",
+            "**over"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_valid_token_returns_user_id",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_wrong_signature_rejected",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_wrong_audience_rejected",
+          "params": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_wrong_issuer_rejected",
+          "params": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_missing_nameid_claim_rejected",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "dt"
+          ]
+        },
+        {
+          "source": "jwt",
+          "specifiers": [
+            "jwt"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "auth"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "settings",
+        "make_token",
+        "test_valid_token_returns_user_id",
+        "test_wrong_signature_rejected",
+        "test_wrong_audience_rejected",
+        "test_wrong_issuer_rejected",
+        "test_missing_nameid_claim_rejected"
+      ],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_batch.py": {
+      "filePath": "tests/test_batch.py",
+      "contentHash": "76212749f2ebe8b254d8514f238e8d943dc13b479eab4255441bfb0da0e659f9",
+      "functions": [
+        {
+          "name": "test_run_batch_creates_rows_for_warranted",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 20
+        }
+      ],
+      "classes": [
+        {
+          "name": "FakeGraph",
+          "methods": [
+            "invoke"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone",
+            "timedelta"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "batch",
+            "db",
+            "rules"
+          ]
+        }
+      ],
+      "exports": [
+        "FakeGraph",
+        "test_run_batch_creates_rows_for_warranted"
+      ],
+      "totalLines": 38,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_config.py": {
+      "filePath": "tests/test_config.py",
+      "contentHash": "924eb2a050bf95e60a97df4af04ae83fbacc83384e1c543a331931942db8b9eb",
+      "functions": [
+        {
+          "name": "test_load_settings_reads_env",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "load_settings"
+          ]
+        }
+      ],
+      "exports": [
+        "test_load_settings_reads_env"
+      ],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_db.py": {
+      "filePath": "tests/test_db.py",
+      "contentHash": "897a9e22e3f43fb908239c44955b661dfac2e755e1b2e28aca06797ce8a82f7a",
+      "functions": [
+        {
+          "name": "test_init_schema_and_followup_roundtrip",
+          "params": [
+            "conn"
+          ],
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "test_existing_followup_app_ids_excludes_rejected",
+          "params": [
+            "conn"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_resume_roundtrip",
+          "params": [
+            "conn"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_app_ai_jd_match_optimize",
+          "params": [
+            "conn"
+          ],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "test_upsert_jd_does_not_clobber_other_users_app",
+          "params": [
+            "conn"
+          ],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "db"
+          ]
+        }
+      ],
+      "exports": [
+        "test_init_schema_and_followup_roundtrip",
+        "test_existing_followup_app_ids_excludes_rejected",
+        "test_resume_roundtrip",
+        "test_app_ai_jd_match_optimize",
+        "test_upsert_jd_does_not_clobber_other_users_app"
+      ],
+      "totalLines": 69,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_graph.py": {
+      "filePath": "tests/test_graph.py",
+      "contentHash": "2cbace92ce4db3b174e31d04a8abef309024c64da6a97bcb7f428be59ebeb032",
+      "functions": [
+        {
+          "name": "build",
+          "params": [
+            "send_calls",
+            "warranted"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "run_to_interrupt",
+          "params": [
+            "g",
+            "app"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_not_warranted_ends_without_interrupt",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_warranted_interrupts_then_approve_sends",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_warranted_interrupts_then_reject_does_not_send",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "langgraph.checkpoint.memory",
+          "specifiers": [
+            "MemorySaver"
+          ]
+        },
+        {
+          "source": "langgraph.types",
+          "specifiers": [
+            "Command"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow",
+            "Draft"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "graph_mod"
+          ]
+        }
+      ],
+      "exports": [
+        "build",
+        "run_to_interrupt",
+        "test_not_warranted_ends_without_interrupt",
+        "test_warranted_interrupts_then_approve_sends",
+        "test_warranted_interrupts_then_reject_does_not_send"
+      ],
+      "totalLines": 51,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_llm.py": {
+      "filePath": "tests/test_llm.py",
+      "contentHash": "5aa088dbf6ea76bb56cb67a2d6565a4f343faa0c5e0a3f749b43ddfc5a88d6e8",
+      "functions": [
+        {
+          "name": "test_assess_and_draft_maps_structured_output",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "_ai_settings",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_extract_maps_structured_output",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "test_match_maps_structured_output",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow",
+            "Draft"
+          ]
+        },
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "llm"
+          ]
+        }
+      ],
+      "exports": [
+        "test_assess_and_draft_maps_structured_output",
+        "_ai_settings",
+        "test_extract_maps_structured_output",
+        "test_match_maps_structured_output"
+      ],
+      "totalLines": 80,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_mailer.py": {
+      "filePath": "tests/test_mailer.py",
+      "contentHash": "b6c986c61266066672d2e9186f0760e796716baef3ba24d5820beed718d1855f",
+      "functions": [
+        {
+          "name": "make_settings",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_send_email_uses_smtp",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "mailer"
+          ]
+        },
+        {
+          "source": "followup_agent.config",
+          "specifiers": [
+            "Settings"
+          ]
+        }
+      ],
+      "exports": [
+        "make_settings",
+        "test_send_email_uses_smtp"
+      ],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_rules.py": {
+      "filePath": "tests/test_rules.py",
+      "contentHash": "508362978499a429ea6cadb1c4c96d0d16b776afb9e3c6691fb04d164c9b8a02",
+      "functions": [
+        {
+          "name": "app",
+          "params": [
+            "id",
+            "status",
+            "days_ago"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "test_includes_stale_applied_and_screening",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_excludes_recent",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "test_excludes_ineligible_status",
+          "params": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_excludes_apps_with_existing_followup",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "test_boundary_exactly_threshold_is_eligible",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "followup_agent.models",
+          "specifiers": [
+            "AppRow"
+          ]
+        },
+        {
+          "source": "followup_agent.rules",
+          "specifiers": [
+            "eligible_apps"
+          ]
+        }
+      ],
+      "exports": [
+        "app",
+        "test_includes_stale_applied_and_screening",
+        "test_excludes_recent",
+        "test_excludes_ineligible_status",
+        "test_excludes_apps_with_existing_followup",
+        "test_boundary_exactly_threshold_is_eligible"
+      ],
+      "totalLines": 36,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_scheduler.py": {
+      "filePath": "tests/test_scheduler.py",
+      "contentHash": "d697b94ae99a86ff917623992604b629b93b83716ddffd5e6955efe02f9b7132",
+      "functions": [
+        {
+          "name": "test_start_nightly_registers_daily_cron",
+          "params": [],
+          "exported": true,
+          "lineCount": 10
+        }
+      ],
+      "classes": [
+        {
+          "name": "FakeScheduler",
+          "methods": [
+            "__init__",
+            "add_job"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "imports": [
+        {
+          "source": "followup_agent",
+          "specifiers": [
+            "scheduler"
+          ]
+        }
+      ],
+      "exports": [
+        "FakeScheduler",
+        "test_start_nightly_registers_daily_cron"
+      ],
+      "totalLines": 20,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

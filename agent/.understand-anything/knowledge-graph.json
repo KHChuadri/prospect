@@ -1,0 +1,2468 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "agent",
+    "languages": [
+      "config",
+      "markdown",
+      "python",
+      "shell",
+      "txt"
+    ],
+    "frameworks": [
+      "APScheduler",
+      "FastAPI",
+      "LangChain",
+      "LangGraph",
+      "PyJWT",
+      "Uvicorn",
+      "httpx",
+      "psycopg",
+      "pytest",
+      "python-dotenv"
+    ],
+    "description": "A Python LangGraph follow-up agent that watches job applications stuck in an early status (Applied/Screening) past a threshold, uses an LLM to draft polite follow-up emails parked for human approval, and sends them over SMTP once approved. It exposes a FastAPI API, runs a daily APScheduler cron, and shares a Postgres database and JWT identity with an ASP.NET backend.",
+    "analyzedAt": "2026-07-06T07:33:34.165670+00:00",
+    "gitCommitHash": "4f9593cd885d26be0a3d7a8ad9c98a3965788472"
+  },
+  "nodes": [
+    {
+      "id": "config:.env.example",
+      "type": "config",
+      "name": ".env.example",
+      "filePath": ".env.example",
+      "summary": "Template of environment variables the follow-up agent reads at startup: Postgres DSN, LLM/OpenRouter credentials, JWT validation parameters, SMTP mailer settings, and follow-up scheduling knobs.",
+      "tags": [
+        "configuration",
+        "environment",
+        "security",
+        "secrets-template"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:requirements.txt",
+      "type": "document",
+      "name": "requirements.txt",
+      "filePath": "requirements.txt",
+      "summary": "Python dependency pin list for the agent, declaring FastAPI, LangGraph/LangChain, APScheduler, psycopg, PyJWT, and Uvicorn as the runtime stack.",
+      "tags": [
+        "dependencies",
+        "build-system",
+        "python"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:run.sh",
+      "type": "file",
+      "name": "run.sh",
+      "filePath": "run.sh",
+      "summary": "Convenience launch script that loads the local environment and starts the FastAPI/agent process via Uvicorn.",
+      "tags": [
+        "script",
+        "entry-point",
+        "deployment"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:pytest.ini",
+      "type": "config",
+      "name": "pytest.ini",
+      "filePath": "pytest.ini",
+      "summary": "Pytest configuration controlling test discovery and options for the agent's test suite.",
+      "tags": [
+        "configuration",
+        "test",
+        "build-system"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:draft_now.py",
+      "type": "file",
+      "name": "draft_now.py",
+      "filePath": "draft_now.py",
+      "summary": "Standalone helper script that opens a database connection and runs a single follow-up batch pass on demand, printing how many drafts were created.",
+      "tags": [
+        "script",
+        "entry-point",
+        "batch"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:draft_now.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "draft_now.py",
+      "lineRange": [
+        13,
+        20
+      ],
+      "summary": "Creates a DB connection, invokes the batch runner to draft eligible follow-ups, commits, and reports the count.",
+      "tags": [
+        "entry-point",
+        "batch",
+        "orchestration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "followup_agent/__init__.py",
+      "summary": "Package marker for the followup_agent package; contains no runtime logic.",
+      "tags": [
+        "entry-point",
+        "package",
+        "barrel"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/auth.py",
+      "type": "file",
+      "name": "auth.py",
+      "filePath": "followup_agent/auth.py",
+      "summary": "JWT verification helper that decodes and validates bearer tokens against the configured signing key, issuer, and audience, returning the authenticated user id.",
+      "tags": [
+        "authentication",
+        "security",
+        "jwt",
+        "tested"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/auth.py:user_id_from_token",
+      "type": "function",
+      "name": "user_id_from_token",
+      "filePath": "followup_agent/auth.py",
+      "lineRange": [
+        11,
+        28
+      ],
+      "summary": "Decodes a JWT with signature/issuer/audience checks and extracts the numeric user id, raising AuthError on any validation failure.",
+      "tags": [
+        "authentication",
+        "validation",
+        "jwt"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/batch.py",
+      "type": "file",
+      "name": "batch.py",
+      "filePath": "followup_agent/batch.py",
+      "summary": "Batch runner that fetches candidate applications, filters them through eligibility rules, drives each through the agent graph, and persists generated follow-up drafts.",
+      "tags": [
+        "batch",
+        "orchestration",
+        "service",
+        "tested"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/batch.py:run_batch",
+      "type": "function",
+      "name": "run_batch",
+      "filePath": "followup_agent/batch.py",
+      "lineRange": [
+        6,
+        34
+      ],
+      "summary": "Selects eligible applications lacking follow-ups, invokes the LangGraph agent per app to assess and draft, and stores each warranted draft in the database.",
+      "tags": [
+        "batch",
+        "orchestration",
+        "service"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:followup_agent/config.py",
+      "type": "file",
+      "name": "config.py",
+      "filePath": "followup_agent/config.py",
+      "summary": "Defines the Settings container and load_settings() which reads all runtime configuration (database, LLM/OpenRouter, JWT, SMTP, scheduling) from environment variables.",
+      "tags": [
+        "configuration",
+        "settings",
+        "data-model",
+        "tested"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:followup_agent/config.py:Settings",
+      "type": "class",
+      "name": "Settings",
+      "filePath": "followup_agent/config.py",
+      "lineRange": [
+        13,
+        32
+      ],
+      "summary": "Immutable settings object holding database, LLM, JWT, SMTP, and follow-up scheduling configuration values for the agent.",
+      "tags": [
+        "configuration",
+        "data-model",
+        "settings"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/config.py:load_settings",
+      "type": "function",
+      "name": "load_settings",
+      "filePath": "followup_agent/config.py",
+      "lineRange": [
+        35,
+        53
+      ],
+      "summary": "Reads environment variables (with defaults and int coercion) and assembles a populated Settings instance for the application.",
+      "tags": [
+        "configuration",
+        "factory",
+        "settings"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/mailer.py",
+      "type": "file",
+      "name": "mailer.py",
+      "filePath": "followup_agent/mailer.py",
+      "summary": "SMTP mailer that builds an EmailMessage and sends the approved follow-up email over a STARTTLS-authenticated connection.",
+      "tags": [
+        "service",
+        "email",
+        "smtp",
+        "integration",
+        "tested"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/mailer.py:send_email",
+      "type": "function",
+      "name": "send_email",
+      "filePath": "followup_agent/mailer.py",
+      "lineRange": [
+        6,
+        16
+      ],
+      "summary": "Composes and delivers an email via SMTP using the configured host, credentials, and from-address.",
+      "tags": [
+        "service",
+        "email",
+        "smtp"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/rules.py",
+      "type": "file",
+      "name": "rules.py",
+      "filePath": "followup_agent/rules.py",
+      "summary": "Pure eligibility logic that selects applications old enough for a follow-up and without an existing one.",
+      "tags": [
+        "validation",
+        "business-logic",
+        "rules",
+        "tested"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/rules.py:eligible_apps",
+      "type": "function",
+      "name": "eligible_apps",
+      "filePath": "followup_agent/rules.py",
+      "lineRange": [
+        5,
+        20
+      ],
+      "summary": "Filters applications to those past the configured age threshold and lacking an existing follow-up, returning the eligible subset.",
+      "tags": [
+        "validation",
+        "business-logic",
+        "rules"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/scheduler.py",
+      "type": "file",
+      "name": "scheduler.py",
+      "filePath": "followup_agent/scheduler.py",
+      "summary": "Thin scheduling helper that registers the nightly follow-up job with an APScheduler instance.",
+      "tags": [
+        "scheduler",
+        "utility",
+        "cron",
+        "tested"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/conftest.py",
+      "type": "file",
+      "name": "conftest.py",
+      "filePath": "tests/conftest.py",
+      "summary": "Pytest shared fixtures providing a rolled-back Postgres connection, skipping tests automatically when no database is available.",
+      "tags": [
+        "test",
+        "fixture",
+        "database",
+        "pytest"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_auth.py",
+      "type": "file",
+      "name": "test_auth.py",
+      "filePath": "tests/test_auth.py",
+      "summary": "Unit tests for JWT verification, asserting rejection of wrong signature, audience, issuer, and missing nameid claims while accepting valid tokens.",
+      "tags": [
+        "test",
+        "authentication",
+        "validation",
+        "security",
+        "pytest"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_batch.py",
+      "type": "file",
+      "name": "test_batch.py",
+      "filePath": "tests/test_batch.py",
+      "summary": "Tests the nightly batch runner, verifying it creates follow-up rows only for warranted applications using a fake graph and monkeypatched DB helpers.",
+      "tags": [
+        "test",
+        "batch-processing",
+        "pytest",
+        "mocking"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_config.py",
+      "type": "file",
+      "name": "test_config.py",
+      "filePath": "tests/test_config.py",
+      "summary": "Verifies that Settings are loaded correctly from environment variables via load_settings.",
+      "tags": [
+        "test",
+        "configuration",
+        "pytest"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_graph.py",
+      "type": "file",
+      "name": "test_graph.py",
+      "filePath": "tests/test_graph.py",
+      "summary": "Tests the LangGraph follow-up workflow, verifying non-warranted paths end without interrupt and warranted paths interrupt then send or skip based on approve/reject commands.",
+      "tags": [
+        "test",
+        "workflow",
+        "langgraph",
+        "pytest"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_mailer.py",
+      "type": "file",
+      "name": "test_mailer.py",
+      "filePath": "tests/test_mailer.py",
+      "summary": "Tests send_email wiring by monkeypatching SMTP and asserting the mailer builds and dispatches messages using configured settings.",
+      "tags": [
+        "test",
+        "email",
+        "pytest",
+        "mocking"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_rules.py",
+      "type": "file",
+      "name": "test_rules.py",
+      "filePath": "tests/test_rules.py",
+      "summary": "Tests the eligibility rules for follow-ups, covering stale applied/screening inclusion, recent/ineligible exclusion, existing follow-up exclusion, and boundary thresholds.",
+      "tags": [
+        "test",
+        "validation",
+        "business-rules",
+        "pytest"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_scheduler.py",
+      "type": "file",
+      "name": "test_scheduler.py",
+      "filePath": "tests/test_scheduler.py",
+      "summary": "Verifies start_nightly registers a daily cron job at the expected hour and minute using a fake scheduler.",
+      "tags": [
+        "test",
+        "scheduler",
+        "cron",
+        "pytest"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/conftest.py:conn",
+      "type": "function",
+      "name": "conn",
+      "filePath": "tests/conftest.py",
+      "lineRange": [
+        12,
+        22
+      ],
+      "summary": "Pytest fixture yielding a Postgres connection, skipping the test if the DB is unreachable and rolling back after each test.",
+      "tags": [
+        "fixture",
+        "database",
+        "test"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/test_batch.py:test_run_batch_creates_rows_for_warranted",
+      "type": "function",
+      "name": "test_run_batch_creates_rows_for_warranted",
+      "filePath": "tests/test_batch.py",
+      "lineRange": [
+        18,
+        37
+      ],
+      "summary": "Asserts run_batch creates follow-up rows only for applications deemed warranted by the fake graph, using monkeypatched eligibility and creation helpers.",
+      "tags": [
+        "test",
+        "batch-processing",
+        "mocking"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:tests/test_config.py:test_load_settings_reads_env",
+      "type": "function",
+      "name": "test_load_settings_reads_env",
+      "filePath": "tests/test_config.py",
+      "lineRange": [
+        5,
+        15
+      ],
+      "summary": "Sets environment variables via monkeypatch and asserts load_settings reflects them in the returned Settings object.",
+      "tags": [
+        "test",
+        "configuration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/test_mailer.py:test_send_email_uses_smtp",
+      "type": "function",
+      "name": "test_send_email_uses_smtp",
+      "filePath": "tests/test_mailer.py",
+      "lineRange": [
+        13,
+        31
+      ],
+      "summary": "Monkeypatches SMTP and asserts send_email connects, logs in, and sends a message built from the provided settings.",
+      "tags": [
+        "test",
+        "email",
+        "mocking"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:tests/test_scheduler.py:test_start_nightly_registers_daily_cron",
+      "type": "function",
+      "name": "test_start_nightly_registers_daily_cron",
+      "filePath": "tests/test_scheduler.py",
+      "lineRange": [
+        10,
+        19
+      ],
+      "summary": "Uses a fake scheduler to assert start_nightly registers exactly one daily cron job at the configured hour and minute.",
+      "tags": [
+        "test",
+        "scheduler",
+        "cron"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:ARCHITECTURE.md",
+      "type": "document",
+      "name": "ARCHITECTURE.md",
+      "filePath": "ARCHITECTURE.md",
+      "summary": "Architecture reference for the follow-up agent, covering the system diagram, component responsibilities, the LangGraph flow, cross-cutting design notes, and the concurrency model with its constraints.",
+      "tags": [
+        "documentation",
+        "architecture",
+        "overview",
+        "concurrency"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:followup_agent/graph.py",
+      "type": "file",
+      "name": "graph.py",
+      "filePath": "followup_agent/graph.py",
+      "summary": "Defines the LangGraph state machine (assess, human_review, send) with conditional routing and a human-in-the-loop interrupt for the follow-up decision.",
+      "tags": [
+        "service",
+        "factory",
+        "event-handler",
+        "data-pipeline"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "State reads are narrowed via TypedDict .get() plus asserts to satisfy typing while tolerating partially populated state."
+    },
+    {
+      "id": "function:followup_agent/graph.py:build_graph",
+      "type": "function",
+      "name": "build_graph",
+      "filePath": "followup_agent/graph.py",
+      "lineRange": [
+        6,
+        56
+      ],
+      "summary": "Assembles and compiles the StateGraph, defining the assess/human_review/send nodes, conditional edges, and the interrupt-based human review gate using injected assess and send callables.",
+      "tags": [
+        "factory",
+        "service",
+        "event-handler"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_api.py",
+      "type": "file",
+      "name": "test_api.py",
+      "filePath": "tests/test_api.py",
+      "summary": "Pytest suite exercising the API endpoints with a monkeypatched DB and a FakeGraph, verifying auth enforcement, row listing, and the approve/reject status transitions.",
+      "tags": [
+        "test",
+        "api-handler",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:tests/test_api.py:client",
+      "type": "function",
+      "name": "client",
+      "filePath": "tests/test_api.py",
+      "lineRange": [
+        33,
+        48
+      ],
+      "summary": "Pytest fixture that monkeypatches the DB layer, injects a FakeGraph and fake connection, and returns a TestClient over the created app.",
+      "tags": [
+        "test",
+        "factory",
+        "dependency-injection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/test_api.py:test_list_requires_auth",
+      "type": "function",
+      "name": "test_list_requires_auth",
+      "filePath": "tests/test_api.py",
+      "lineRange": [
+        56,
+        58
+      ],
+      "summary": "Asserts the list endpoint rejects unauthenticated requests.",
+      "tags": [
+        "test",
+        "validation",
+        "security"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/test_api.py:test_list_returns_rows",
+      "type": "function",
+      "name": "test_list_returns_rows",
+      "filePath": "tests/test_api.py",
+      "lineRange": [
+        61,
+        66
+      ],
+      "summary": "Verifies an authenticated list request returns the expected follow-up rows.",
+      "tags": [
+        "test",
+        "api-handler"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/test_api.py:test_approve_resumes_graph_and_marks_sent",
+      "type": "function",
+      "name": "test_approve_resumes_graph_and_marks_sent",
+      "filePath": "tests/test_api.py",
+      "lineRange": [
+        69,
+        76
+      ],
+      "summary": "Checks that approving a follow-up resumes the graph and updates the row status to sent.",
+      "tags": [
+        "test",
+        "event-handler",
+        "api-handler"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/test_api.py:test_reject_marks_rejected",
+      "type": "function",
+      "name": "test_reject_marks_rejected",
+      "filePath": "tests/test_api.py",
+      "lineRange": [
+        79,
+        84
+      ],
+      "summary": "Checks that rejecting a follow-up marks the row status as rejected.",
+      "tags": [
+        "test",
+        "event-handler",
+        "api-handler"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:tests/test_api.py:test_approve_rejects_non_pending",
+      "type": "function",
+      "name": "test_approve_rejects_non_pending",
+      "filePath": "tests/test_api.py",
+      "lineRange": [
+        87,
+        94
+      ],
+      "summary": "Verifies approving a follow-up that is not in pending status is rejected, guarding the status-transition invariant.",
+      "tags": [
+        "test",
+        "validation",
+        "security"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/ai.py",
+      "type": "file",
+      "name": "ai.py",
+      "filePath": "followup_agent/ai.py",
+      "summary": "AI sub-router exposing FastAPI endpoints for resume storage, job-description extraction, resume-to-JD matching, and resume optimization, guarded by bearer-token auth.",
+      "tags": [
+        "api-handler",
+        "service",
+        "router",
+        "authentication",
+        "ai",
+        "tested"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Uses a factory (create_ai_router) that closes over settings and a connection factory, defining nested FastAPI route handlers."
+    },
+    {
+      "id": "function:followup_agent/ai.py:create_ai_router",
+      "type": "function",
+      "name": "create_ai_router",
+      "filePath": "followup_agent/ai.py",
+      "lineRange": [
+        12,
+        112
+      ],
+      "summary": "Builds and returns the AI APIRouter, wiring extract/put_resume/get_resume/put_jd/match/optimize handlers to the LLM and DB layers with per-request auth.",
+      "tags": [
+        "factory",
+        "router",
+        "api-handler",
+        "authentication"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:followup_agent/api.py",
+      "type": "file",
+      "name": "api.py",
+      "filePath": "followup_agent/api.py",
+      "summary": "Primary FastAPI application factory exposing follow-up email listing plus approve/reject endpoints that drive the LangGraph workflow, and mounting the AI sub-router.",
+      "tags": [
+        "api-handler",
+        "entry-point",
+        "router",
+        "middleware"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:followup_agent/api.py:create_app",
+      "type": "function",
+      "name": "create_app",
+      "filePath": "followup_agent/api.py",
+      "lineRange": [
+        17,
+        102
+      ],
+      "summary": "Constructs the FastAPI app, adds CORS middleware, includes the AI router, and defines list/approve/reject follow-up endpoints that invoke the graph and persist state.",
+      "tags": [
+        "factory",
+        "api-handler",
+        "middleware",
+        "entry-point"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:followup_agent/db.py",
+      "type": "file",
+      "name": "db.py",
+      "filePath": "followup_agent/db.py",
+      "summary": "Postgres persistence layer (via psycopg) providing schema initialization and CRUD helpers for follow-ups, resumes, job descriptions, matches, and optimized resumes.",
+      "tags": [
+        "data-model",
+        "database",
+        "persistence",
+        "service",
+        "tested"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Plain function-per-query style using conn.cursor()/execute; upserts rely on ON CONFLICT semantics."
+    },
+    {
+      "id": "function:followup_agent/db.py:fetch_candidate_apps",
+      "type": "function",
+      "name": "fetch_candidate_apps",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        51,
+        63
+      ],
+      "summary": "Queries applications eligible for follow-up and maps each row into an AppRow model.",
+      "tags": [
+        "database",
+        "query",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:create_follow_up",
+      "type": "function",
+      "name": "create_follow_up",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        72,
+        80
+      ],
+      "summary": "Inserts a new follow-up email row for an application and returns its generated id.",
+      "tags": [
+        "database",
+        "insert",
+        "persistence"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:list_follow_ups",
+      "type": "function",
+      "name": "list_follow_ups",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        83,
+        90
+      ],
+      "summary": "Lists follow-up rows for a user, optionally filtered by status.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:get_follow_up",
+      "type": "function",
+      "name": "get_follow_up",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        93,
+        101
+      ],
+      "summary": "Fetches a single follow-up scoped to a user, with optional row locking for updates.",
+      "tags": [
+        "database",
+        "query",
+        "concurrency"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:update_follow_up",
+      "type": "function",
+      "name": "update_follow_up",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        104,
+        111
+      ],
+      "summary": "Dynamically builds and executes an UPDATE on a follow-up row from arbitrary keyword fields.",
+      "tags": [
+        "database",
+        "update",
+        "persistence"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:upsert_resume",
+      "type": "function",
+      "name": "upsert_resume",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        119,
+        126
+      ],
+      "summary": "Inserts or updates the stored resume text for a user.",
+      "tags": [
+        "database",
+        "upsert",
+        "persistence"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:get_resume",
+      "type": "function",
+      "name": "get_resume",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        129,
+        133
+      ],
+      "summary": "Retrieves a user's stored resume text, if any.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:upsert_jd",
+      "type": "function",
+      "name": "upsert_jd",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        136,
+        144
+      ],
+      "summary": "Inserts or updates the job-description text for an application, scoped to the owning user.",
+      "tags": [
+        "database",
+        "upsert",
+        "persistence"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:get_app_ai",
+      "type": "function",
+      "name": "get_app_ai",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        147,
+        153
+      ],
+      "summary": "Loads the AI-related record (JD, cached match, optimized resume) for an application and user.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:save_match",
+      "type": "function",
+      "name": "save_match",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        156,
+        162
+      ],
+      "summary": "Persists a computed resume-to-JD match result as JSON for later cache retrieval.",
+      "tags": [
+        "database",
+        "persistence",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/db.py:save_optimized",
+      "type": "function",
+      "name": "save_optimized",
+      "filePath": "followup_agent/db.py",
+      "lineRange": [
+        165,
+        171
+      ],
+      "summary": "Stores an optimized resume text for an application and user.",
+      "tags": [
+        "database",
+        "persistence"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/llm.py",
+      "type": "file",
+      "name": "llm.py",
+      "filePath": "followup_agent/llm.py",
+      "summary": "LangChain/OpenAI wrapper providing structured-output LLM calls for drafting follow-ups, extracting JD fields, matching resumes to JDs, and optimizing resumes.",
+      "tags": [
+        "service",
+        "ai",
+        "integration",
+        "serialization",
+        "tested"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Uses ChatOpenAI.with_structured_output to coerce responses into Pydantic models."
+    },
+    {
+      "id": "function:followup_agent/llm.py:assess_and_draft",
+      "type": "function",
+      "name": "assess_and_draft",
+      "filePath": "followup_agent/llm.py",
+      "lineRange": [
+        34,
+        39
+      ],
+      "summary": "Assesses whether a follow-up is warranted for an application and drafts subject/body via a structured LLM call.",
+      "tags": [
+        "ai",
+        "llm-call",
+        "service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/llm.py:extract",
+      "type": "function",
+      "name": "extract",
+      "filePath": "followup_agent/llm.py",
+      "lineRange": [
+        66,
+        71
+      ],
+      "summary": "Extracts structured job-description fields (company, role, requirements, etc.) from raw text via the LLM.",
+      "tags": [
+        "ai",
+        "llm-call",
+        "extraction"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/llm.py:match",
+      "type": "function",
+      "name": "match",
+      "filePath": "followup_agent/llm.py",
+      "lineRange": [
+        74,
+        79
+      ],
+      "summary": "Computes a structured match result (score, matched/missing skills, suggestions) between a resume and a job description.",
+      "tags": [
+        "ai",
+        "llm-call",
+        "matching"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:followup_agent/llm.py:optimize",
+      "type": "function",
+      "name": "optimize",
+      "filePath": "followup_agent/llm.py",
+      "lineRange": [
+        82,
+        87
+      ],
+      "summary": "Produces an optimized resume tailored to a job description via a structured LLM call.",
+      "tags": [
+        "ai",
+        "llm-call",
+        "optimization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/main.py",
+      "type": "file",
+      "name": "main.py",
+      "filePath": "followup_agent/main.py",
+      "summary": "Application entry point that wires the LangGraph, DB connection factory, mailer, and APScheduler nightly batch job, then builds the FastAPI app.",
+      "tags": [
+        "entry-point",
+        "bootstrap",
+        "scheduler"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:followup_agent/main.py:_nightly_job",
+      "type": "function",
+      "name": "_nightly_job",
+      "filePath": "followup_agent/main.py",
+      "lineRange": [
+        61,
+        68
+      ],
+      "summary": "Scheduled job that opens a DB connection, runs the follow-up batch generation, commits, and reports how many drafts were created.",
+      "tags": [
+        "scheduler",
+        "batch",
+        "event-handler"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:followup_agent/main.py:_SerializedGraph",
+      "type": "class",
+      "name": "_SerializedGraph",
+      "filePath": "followup_agent/main.py",
+      "lineRange": [
+        32,
+        49
+      ],
+      "summary": "Thread-safe wrapper around the LangGraph that serializes invoke() calls with a lock to avoid concurrent execution.",
+      "tags": [
+        "concurrency",
+        "wrapper",
+        "singleton"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:followup_agent/models.py",
+      "type": "file",
+      "name": "models.py",
+      "filePath": "followup_agent/models.py",
+      "summary": "Pydantic data models for application rows, LLM structured outputs (draft, extraction, match, optimized resume), and the LangGraph follow-up state.",
+      "tags": [
+        "data-model",
+        "type-definition",
+        "schema"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Pydantic BaseModel definitions used both as ORM-row shapes and as LLM structured-output targets."
+    },
+    {
+      "id": "class:followup_agent/models.py:AppRow",
+      "type": "class",
+      "name": "AppRow",
+      "filePath": "followup_agent/models.py",
+      "lineRange": [
+        11,
+        17
+      ],
+      "summary": "Data model representing a job application row (company, role, status, applied_at).",
+      "tags": [
+        "data-model",
+        "type-definition"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:followup_agent/models.py:Draft",
+      "type": "class",
+      "name": "Draft",
+      "filePath": "followup_agent/models.py",
+      "lineRange": [
+        20,
+        24
+      ],
+      "summary": "LLM structured-output model capturing whether a follow-up is warranted plus the drafted subject and body.",
+      "tags": [
+        "data-model",
+        "type-definition",
+        "ai"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:followup_agent/models.py:Extraction",
+      "type": "class",
+      "name": "Extraction",
+      "filePath": "followup_agent/models.py",
+      "lineRange": [
+        27,
+        33
+      ],
+      "summary": "LLM structured-output model for extracted job-description fields (company, role, location, salary, requirements).",
+      "tags": [
+        "data-model",
+        "type-definition",
+        "extraction"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:followup_agent/models.py:MatchResult",
+      "type": "class",
+      "name": "MatchResult",
+      "filePath": "followup_agent/models.py",
+      "lineRange": [
+        36,
+        40
+      ],
+      "summary": "LLM structured-output model holding a resume-to-JD match score with matched, missing, and suggested items.",
+      "tags": [
+        "data-model",
+        "type-definition",
+        "matching"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:followup_agent/models.py:FollowUpState",
+      "type": "class",
+      "name": "FollowUpState",
+      "filePath": "followup_agent/models.py",
+      "lineRange": [
+        47,
+        54
+      ],
+      "summary": "LangGraph workflow state carrying the application, warranted flag, draft fields, decision, and recipient email through the graph.",
+      "tags": [
+        "data-model",
+        "state",
+        "type-definition"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_ai.py",
+      "type": "file",
+      "name": "test_ai.py",
+      "filePath": "tests/test_ai.py",
+      "summary": "Pytest suite for the AI router covering auth enforcement, JD extraction, LLM error handling (502), and resume-to-JD match computation and caching.",
+      "tags": [
+        "test",
+        "api-handler",
+        "validation"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Uses FastAPI TestClient with monkeypatched llm/db and a FakeConn stub."
+    },
+    {
+      "id": "file:tests/test_db.py",
+      "type": "file",
+      "name": "test_db.py",
+      "filePath": "tests/test_db.py",
+      "summary": "Pytest suite exercising the DB layer: follow-up roundtrips, rejected-app exclusion, resume roundtrips, and JD/match/optimize persistence with per-user isolation.",
+      "tags": [
+        "test",
+        "database",
+        "integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_llm.py",
+      "type": "file",
+      "name": "test_llm.py",
+      "filePath": "tests/test_llm.py",
+      "summary": "Pytest suite verifying that llm.assess_and_draft, extract, and match correctly map structured LLM outputs into the corresponding Pydantic models.",
+      "tags": [
+        "test",
+        "ai",
+        "validation"
+      ],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:draft_now.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:draft_now.py",
+      "target": "file:followup_agent/batch.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/auth.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/batch.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/batch.py",
+      "target": "file:followup_agent/rules.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/mailer.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:draft_now.py",
+      "target": "function:draft_now.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:draft_now.py",
+      "target": "function:draft_now.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/auth.py",
+      "target": "function:followup_agent/auth.py:user_id_from_token",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/auth.py",
+      "target": "function:followup_agent/auth.py:user_id_from_token",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/batch.py",
+      "target": "function:followup_agent/batch.py:run_batch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/batch.py",
+      "target": "function:followup_agent/batch.py:run_batch",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/config.py",
+      "target": "class:followup_agent/config.py:Settings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/config.py",
+      "target": "class:followup_agent/config.py:Settings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/config.py",
+      "target": "function:followup_agent/config.py:load_settings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/config.py",
+      "target": "function:followup_agent/config.py:load_settings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/mailer.py",
+      "target": "function:followup_agent/mailer.py:send_email",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/mailer.py",
+      "target": "function:followup_agent/mailer.py:send_email",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/rules.py",
+      "target": "function:followup_agent/rules.py:eligible_apps",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/rules.py",
+      "target": "function:followup_agent/rules.py:eligible_apps",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "config:.env.example",
+      "target": "file:followup_agent/config.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:tests/conftest.py",
+      "target": "function:tests/conftest.py:conn",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_batch.py",
+      "target": "function:tests/test_batch.py:test_run_batch_creates_rows_for_warranted",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_config.py",
+      "target": "function:tests/test_config.py:test_load_settings_reads_env",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_mailer.py",
+      "target": "function:tests/test_mailer.py:test_send_email_uses_smtp",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_scheduler.py",
+      "target": "function:tests/test_scheduler.py:test_start_nightly_registers_daily_cron",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_auth.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_auth.py",
+      "target": "file:followup_agent/auth.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_auth.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_batch.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_batch.py",
+      "target": "file:followup_agent/batch.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_batch.py",
+      "target": "file:followup_agent/rules.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_config.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_graph.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_mailer.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_mailer.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_mailer.py",
+      "target": "file:followup_agent/mailer.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_rules.py",
+      "target": "file:followup_agent/rules.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_scheduler.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_scheduler.py",
+      "target": "file:followup_agent/scheduler.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/auth.py",
+      "target": "file:tests/test_auth.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/batch.py",
+      "target": "file:tests/test_batch.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/config.py",
+      "target": "file:tests/test_config.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/mailer.py",
+      "target": "file:tests/test_mailer.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/rules.py",
+      "target": "file:tests/test_rules.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/scheduler.py",
+      "target": "file:tests/test_scheduler.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/graph.py",
+      "target": "function:followup_agent/graph.py:build_graph",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/graph.py",
+      "target": "function:followup_agent/graph.py:build_graph",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "function:tests/test_api.py:client",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "function:tests/test_api.py:test_list_requires_auth",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "function:tests/test_api.py:test_list_returns_rows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "function:tests/test_api.py:test_approve_resumes_graph_and_marks_sent",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "function:tests/test_api.py:test_reject_marks_rejected",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "function:tests/test_api.py:test_approve_rejects_non_pending",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "file:followup_agent/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_api.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "document:ARCHITECTURE.md",
+      "target": "file:followup_agent/graph.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:tests/test_graph.py",
+      "target": "file:followup_agent/graph.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/ai.py:create_ai_router",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/ai.py:create_ai_router",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "function:followup_agent/api.py:create_app",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "function:followup_agent/api.py:create_app",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:fetch_candidate_apps",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:fetch_candidate_apps",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:create_follow_up",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:create_follow_up",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:list_follow_ups",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:list_follow_ups",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:get_follow_up",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:get_follow_up",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:update_follow_up",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:update_follow_up",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:upsert_resume",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:upsert_resume",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:get_resume",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:get_resume",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:upsert_jd",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:upsert_jd",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:get_app_ai",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:get_app_ai",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:save_match",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:save_match",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:save_optimized",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "function:followup_agent/db.py:save_optimized",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:assess_and_draft",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:assess_and_draft",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:extract",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:extract",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:match",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:match",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:optimize",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "function:followup_agent/llm.py:optimize",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "function:followup_agent/main.py:_nightly_job",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "class:followup_agent/main.py:_SerializedGraph",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "class:followup_agent/main.py:_SerializedGraph",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:AppRow",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:AppRow",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:Draft",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:Draft",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:Extraction",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:Extraction",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:MatchResult",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:MatchResult",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:FollowUpState",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:followup_agent/models.py",
+      "target": "class:followup_agent/models.py:FollowUpState",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "file:followup_agent/auth.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "file:followup_agent/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "file:followup_agent/llm.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "file:followup_agent/ai.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "file:followup_agent/auth.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "file:followup_agent/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "file:followup_agent/models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "file:followup_agent/models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/api.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/batch.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/graph.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/llm.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/mailer.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "file:followup_agent/scheduler.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_ai.py",
+      "target": "file:followup_agent/ai.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_ai.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_ai.py",
+      "target": "file:followup_agent/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_ai.py",
+      "target": "file:followup_agent/llm.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_ai.py",
+      "target": "file:followup_agent/models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_db.py",
+      "target": "file:followup_agent/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_llm.py",
+      "target": "file:followup_agent/config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_llm.py",
+      "target": "file:followup_agent/llm.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_llm.py",
+      "target": "file:followup_agent/models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/llm.py:extract",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/llm.py:match",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/llm.py:optimize",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/db.py:upsert_resume",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/db.py:get_resume",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/db.py:upsert_jd",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/db.py:get_app_ai",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/db.py:save_match",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "function:followup_agent/db.py:save_optimized",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "function:followup_agent/ai.py:create_ai_router",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "function:followup_agent/db.py:list_follow_ups",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "function:followup_agent/db.py:get_follow_up",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/api.py",
+      "target": "function:followup_agent/db.py:update_follow_up",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/main.py",
+      "target": "function:followup_agent/llm.py:assess_and_draft",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:followup_agent/ai.py",
+      "target": "file:tests/test_ai.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/db.py",
+      "target": "file:tests/test_db.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:followup_agent/llm.py",
+      "target": "file:tests/test_llm.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:entry",
+      "name": "Entrypoint & Composition",
+      "description": "Composition root and launch scripts that load settings, wire the LLM/mailer/DB dependencies into the agent graph, and start the FastAPI app or a one-off batch run.",
+      "nodeIds": [
+        "file:followup_agent/main.py",
+        "file:followup_agent/__init__.py",
+        "file:run.sh",
+        "file:draft_now.py"
+      ]
+    },
+    {
+      "id": "layer:api",
+      "name": "API Layer",
+      "description": "FastAPI application exposing the follow-up review endpoints (list, approve, reject) with JWT authorization, CORS, and LangGraph resume.",
+      "nodeIds": [
+        "file:followup_agent/api.py",
+        "file:followup_agent/ai.py"
+      ]
+    },
+    {
+      "id": "layer:workflow",
+      "name": "Agent Workflow",
+      "description": "LangGraph state machine, LLM drafting integration, and the batch runner that drives stale applications through assess, human-review, and send stages.",
+      "nodeIds": [
+        "file:followup_agent/graph.py",
+        "file:followup_agent/llm.py",
+        "file:followup_agent/batch.py"
+      ]
+    },
+    {
+      "id": "layer:domain",
+      "name": "Domain Model & Rules",
+      "description": "Core domain models (application rows, LLM draft, follow-up state) and the pure eligibility rules that select applications warranting a follow-up.",
+      "nodeIds": [
+        "file:followup_agent/models.py",
+        "file:followup_agent/rules.py"
+      ]
+    },
+    {
+      "id": "layer:persistence",
+      "name": "Persistence",
+      "description": "Postgres data-access layer providing schema init and row-locking CRUD queries for candidate applications and follow-up rows.",
+      "nodeIds": [
+        "file:followup_agent/db.py"
+      ]
+    },
+    {
+      "id": "layer:infrastructure",
+      "name": "Infrastructure",
+      "description": "Cross-cutting integrations and configuration: JWT verification, SMTP mailer, APScheduler cron registration, and environment-driven settings loading.",
+      "nodeIds": [
+        "file:followup_agent/auth.py",
+        "file:followup_agent/mailer.py",
+        "file:followup_agent/scheduler.py",
+        "file:followup_agent/config.py"
+      ]
+    },
+    {
+      "id": "layer:test",
+      "name": "Tests",
+      "description": "Pytest suite with shared fixtures covering the API, auth, batch, config, db, graph, llm, mailer, rules, and scheduler modules.",
+      "nodeIds": [
+        "file:tests/conftest.py",
+        "file:tests/test_auth.py",
+        "file:tests/test_batch.py",
+        "file:tests/test_config.py",
+        "file:tests/test_db.py",
+        "file:tests/test_graph.py",
+        "file:tests/test_llm.py",
+        "file:tests/test_mailer.py",
+        "file:tests/test_rules.py",
+        "file:tests/test_scheduler.py",
+        "file:tests/test_api.py",
+        "file:tests/test_ai.py"
+      ]
+    },
+    {
+      "id": "layer:config",
+      "name": "Docs & Project Config",
+      "description": "Project documentation, dependency manifest, pytest configuration, and the sample environment file for local setup.",
+      "nodeIds": [
+        "document:ARCHITECTURE.md",
+        "document:requirements.txt",
+        "config:pytest.ini",
+        "config:.env.example"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Architecture Overview",
+      "description": "There is no README, so ARCHITECTURE.md is the authoritative narrative and the right place to begin. It lays out the whole system at a glance: a nightly cron scans stale job applications, an LLM drafts a follow-up email, a human approves it, and only then is it sent over SMTP. Read this first to get the mental model of the assess -> human-review -> send flow and the single-process concurrency model that the rest of the tour will make concrete in code.",
+      "nodeIds": [
+        "document:ARCHITECTURE.md"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Application Entry Point",
+      "description": "main.py is the composition root and the top of the dependency graph (highest fan-out in the project). It loads settings, builds a database connection factory, wires the LLM and mailer callbacks into the LangGraph, exposes the FastAPI app, and registers the nightly scheduled job. Everything the tour visits next is imported and assembled here, so this file is your map of how the pieces connect at runtime.",
+      "nodeIds": [
+        "file:followup_agent/main.py"
+      ],
+      "languageLesson": "This is a hand-rolled dependency-injection / composition root pattern: instead of modules reaching for globals, main.py constructs concrete dependencies (LLM client, mailer, DB factory) and passes them inward as callbacks. This keeps the workflow and persistence layers pure and easy to test with fakes."
+    },
+    {
+      "order": 3,
+      "title": "Configuration & Environment",
+      "description": "Before any logic runs, the app reads its entire runtime configuration from environment variables. config.py defines the Settings container and load_settings(), pulling in the Postgres DSN, LLM/OpenRouter credentials, JWT validation parameters, SMTP details, and the follow-up scheduling knobs. The paired .env.example is the template that documents every variable the agent expects, making it the fastest way to see what external systems this service depends on.",
+      "nodeIds": [
+        "file:followup_agent/config.py",
+        "config:.env.example"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Domain Model & Eligibility Rules",
+      "description": "This is the semantic core of the project. models.py defines the three data shapes that flow through the whole system: AppRow (a job application record), Draft (the LLM's proposed email), and FollowUpState (the state carried through the agent graph). rules.py is pure, side-effect-free logic that decides which applications are stale enough to warrant a follow-up and don't already have one. Understanding these two files unlocks every later step, since the graph, batch runner, and database all speak in these terms.",
+      "nodeIds": [
+        "file:followup_agent/models.py",
+        "file:followup_agent/rules.py"
+      ],
+      "languageLesson": "rules.eligible_apps is deliberately pure: it takes data in and returns a filtered list with no I/O. Isolating business rules from database and network side effects is what lets test_rules.py exhaustively check boundary thresholds without a database."
+    },
+    {
+      "order": 5,
+      "title": "Persistence Layer",
+      "description": "db.py is the only module that talks to Postgres. It initializes the schema and provides CRUD queries for candidate applications and follow-up rows, including the row-locking read used during approval to prevent double-sends. A critical design point from the architecture: every query is scoped by user_id, since identity comes from a JWT shared with the ASP.NET backend and each user must only ever see their own applications and drafts.",
+      "nodeIds": [
+        "file:followup_agent/db.py"
+      ],
+      "languageLesson": "SQL row-level locking (SELECT ... FOR UPDATE) is used here so that when a user approves a follow-up, the row is locked for the duration of the transaction. This guards the approval flow against a concurrent request sending the same email twice."
+    },
+    {
+      "order": 6,
+      "title": "The Agent Workflow Graph",
+      "description": "graph.py builds the heart of the system: a LangGraph state machine with three nodes -- assess (draft the email), human_review (interrupt and park for approval), and send (dispatch the email). Building on the FollowUpState model from Step 4, the graph routes conditionally: unwarranted applications end quietly, while warranted ones hit the human_review interrupt and are checkpointed in Postgres until a human resumes them. This interrupt-and-resume pattern is what makes the whole 'draft now, approve later' architecture possible.",
+      "nodeIds": [
+        "file:followup_agent/graph.py"
+      ],
+      "languageLesson": "LangGraph's interrupt mechanism suspends the graph mid-execution and persists its state via a checkpointer (here, Postgres). Execution can resume much later -- even in a different process, triggered by an API call -- by passing a Command that tells the graph whether the human approved or rejected."
+    },
+    {
+      "order": 7,
+      "title": "LLM Drafting",
+      "description": "llm.py is the assess node's engine. It prompts a chat model through ChatOpenAI/OpenRouter with structured output, asking it two things at once: whether a follow-up is even warranted, and if so, what the subject and body should be. The structured response is mapped directly into the Draft model from Step 4, keeping the boundary between 'unpredictable LLM text' and 'typed domain object' clean and testable.",
+      "nodeIds": [
+        "file:followup_agent/llm.py"
+      ],
+      "languageLesson": "Structured output constrains the LLM to return data matching a schema rather than free-form prose. This turns an inherently fuzzy model call into a reliable function that yields a typed Draft, so downstream code never has to parse loose text."
+    },
+    {
+      "order": 8,
+      "title": "Nightly Batch & Scheduler",
+      "description": "These two files drive the automated side of the system. batch.run_batch fetches candidate applications, filters them through rules.eligible_apps (Step 4), runs each through the agent graph (Step 6), and persists the resulting drafts. scheduler.py is a thin helper that registers run_batch as a nightly APScheduler cron job. Critically, all graph invocations are serialized behind a single process lock -- the concurrency model called out in Step 1's architecture doc.",
+      "nodeIds": [
+        "file:followup_agent/batch.py",
+        "file:followup_agent/scheduler.py"
+      ],
+      "languageLesson": "APScheduler registers time-based jobs inside the running process. Because the batch and the API share one process and one graph, a process-level lock serializes all graph.invoke calls, trading throughput for a simple, race-free correctness guarantee."
+    },
+    {
+      "order": 9,
+      "title": "API Layer & Identity",
+      "description": "api.py exposes the human-facing side: FastAPI endpoints to list parked follow-ups and to approve or reject them. auth.py is the gatekeeper, verifying the bearer JWT against the configured signing key, issuer, and audience -- the same token minted by the ASP.NET backend -- and extracting the user id that scopes every database query from Step 5. Approving a row resumes the checkpointed LangGraph (Step 6) via a Command, flowing execution into the send node.",
+      "nodeIds": [
+        "file:followup_agent/api.py",
+        "file:followup_agent/auth.py"
+      ],
+      "languageLesson": "Sharing a JWT across two services (ASP.NET issues, this Python agent validates) means neither service needs its own login flow. The Python side only needs the signing key, issuer, and audience to trust tokens the .NET backend already issued, keeping identity centralized."
+    },
+    {
+      "order": 10,
+      "title": "AI R\u00e9sum\u00e9 & JD Sub-Router",
+      "description": "The FastAPI sub-router mounted under the API layer that powers the AI features: storing a user's r\u00e9sum\u00e9, extracting structured data from a pasted job description, scoring a r\u00e9sum\u00e9 against a JD, and generating an optimized r\u00e9sum\u00e9. It delegates model calls to the LLM module and persistence to the DB module.",
+      "nodeIds": [
+        "file:followup_agent/ai.py"
+      ]
+    },
+    {
+      "order": 11,
+      "title": "Sending the Email",
+      "description": "mailer.py is the final node in the workflow and the system's only outbound side effect. Once a human approves a draft and the graph resumes into its send node, send_email builds an EmailMessage and dispatches it over a STARTTLS-authenticated SMTP connection using the settings from Step 3. This is the payoff of the entire assess -> review -> send pipeline: a real follow-up email leaves the building only after a human said yes.",
+      "nodeIds": [
+        "file:followup_agent/mailer.py"
+      ]
+    },
+    {
+      "order": 12,
+      "title": "Runtime Stack & Dependencies",
+      "description": "requirements.txt pins the libraries that make everything above work: FastAPI and Uvicorn for the API, LangGraph/LangChain for the agent state machine, APScheduler for the nightly cron, psycopg for Postgres, and PyJWT for token validation. Reading this list ties the abstract architecture back to concrete technology choices and confirms this is a single, self-contained Python service rather than a sprawl of microservices.",
+      "nodeIds": [
+        "document:requirements.txt"
+      ]
+    },
+    {
+      "order": 13,
+      "title": "The Test Suite",
+      "description": "The project has a test module mirroring nearly every source file, which is the best documentation of intended behavior. test_graph.py verifies the interrupt/approve/reject paths of the workflow, test_rules.py pins down the eligibility boundaries, test_api.py covers JWT enforcement and the approve/reject endpoints, and test_batch.py confirms drafts are created only for warranted applications. Together they show how the pure, dependency-injected design from Step 2 pays off: fakes and monkeypatching stand in for the LLM, SMTP, and database.",
+      "nodeIds": [
+        "file:tests/test_graph.py",
+        "file:tests/test_rules.py",
+        "file:tests/test_api.py",
+        "file:tests/test_batch.py"
+      ],
+      "languageLesson": "pytest fixtures (see conftest.py) provide a rolled-back Postgres connection per test and auto-skip when no database is present. Combined with monkeypatch to swap in fake LLM and SMTP clients, the suite exercises real logic while staying fast and hermetic."
+    }
+  ]
+}
