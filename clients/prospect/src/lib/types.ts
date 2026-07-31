@@ -105,3 +105,27 @@ export interface Recommendation {
   accepted_application_id: number | null
   created_at: string
 }
+
+export type EventStatus = 'interested' | 'dismissed'
+
+export interface EventItem {
+  id: number
+  source_name: string
+  source_uid: string
+  url: string
+  title: string
+  description: string
+  starts_at: string | null
+  ends_at: string | null
+  location: string | null
+  is_online: boolean
+  organizations: string[]
+  topics: string[]
+  event_type: string
+  raw_snippet: string
+  created_at: string
+  // Null when undecided — there is no user_events row until the user acts.
+  status: EventStatus | null
+  // Derived per request against the user's JobApplications, never stored.
+  company_match: boolean
+}
