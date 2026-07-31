@@ -36,6 +36,11 @@ class Settings:
     gmail_label: str = "job-alerts"
     reco_user_id: int = 0
     reco_poll_minutes: int = 15
+    events_sources_path: str = ""
+    events_location: str = "Sydney"
+    events_poll_hours: int = 12
+    events_user_agent: str = ""
+    eventbrite_token: str = ""
 
 
 def load_settings() -> Settings:
@@ -62,4 +67,13 @@ def load_settings() -> Settings:
         gmail_label=os.environ.get("GMAIL_LABEL", "job-alerts"),
         reco_user_id=int(os.environ.get("RECO_USER_ID", "0")),
         reco_poll_minutes=int(os.environ.get("RECO_POLL_MINUTES", "15")),
+        events_sources_path=os.environ.get(
+            "EVENTS_SOURCES_PATH",
+            str(Path(__file__).resolve().parent.parent / "events_sources.yaml")),
+        events_location=os.environ.get("EVENTS_LOCATION", "Sydney"),
+        events_poll_hours=int(os.environ.get("EVENTS_POLL_HOURS", "12")),
+        events_user_agent=os.environ.get(
+            "EVENTS_USER_AGENT",
+            "Prospect-EventCrawler/1.0 (+https://github.com/KHChuadri/Prospect)"),
+        eventbrite_token=os.environ.get("EVENTBRITE_TOKEN", ""),
     )

@@ -6,6 +6,10 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from followup_agent import api, batch, db, gmail, llm, mailer, recommend_batch, scheduler
 from followup_agent.config import load_settings
 from followup_agent.graph import build_graph
+from followup_agent.events import crawl as events_crawl
+from followup_agent.events.clean import html_to_text
+from followup_agent.events.fetch import Fetcher
+from followup_agent.events.sources import build_sources
 
 settings = load_settings()
 
@@ -19,6 +23,7 @@ with psycopg.connect(settings.database_url) as _c:
     db.init_schema(_c)
     db.init_ai_schema(_c)
     db.init_reco_schema(_c)
+    db.init_events_schema(_c)
     _c.commit()
 
 
@@ -91,9 +96,35 @@ def _reco_job():
         conn.close()
 
 
+_fetcher = Fetcher(settings.events_user_agent)
+
+
+def _events_extract_fn(text: str, url: str):
+    return llm.extract_event(html_to_text(text), settings)
+
+
+def _events_job():
+    conn = psycopg.connect(settings.database_url)
+    try:
+        ids = events_crawl.run_events_batch(
+            conn,
+            sources=build_sources(settings, _fetcher),
+            fetch_fn=_fetcher.get,
+            extract_fn=_events_extract_fn,
+        )
+        conn.commit()
+        print(f"[events] created {len(ids)} event(s)")
+    except Exception as e:            # a bad crawl must not kill the scheduler
+        conn.rollback()
+        print(f"[events] batch failed: {e}")
+    finally:
+        conn.close()
+
+
 app = api.create_app(settings, conn_factory=_conn_factory, graph=graph)
 
 _sched = BackgroundScheduler()
 scheduler.start_nightly(_sched, _nightly_job)
 scheduler.start_interval(_sched, _reco_job, settings.reco_poll_minutes)
+scheduler.start_hours(_sched, _events_job, settings.events_poll_hours)
 _sched.start()
