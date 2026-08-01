@@ -1,8 +1,7 @@
 from followup_agent import db
 
 
-def test_init_schema_and_followup_roundtrip(conn):
-    db.init_schema(conn)
+def test_followup_roundtrip(conn):
 
     fid = db.create_follow_up(
         conn, app_id=999999, user_id=42, thread_id="t-1",
@@ -25,7 +24,6 @@ def test_init_schema_and_followup_roundtrip(conn):
 
 
 def test_existing_followup_app_ids_excludes_rejected(conn):
-    db.init_schema(conn)
     a = db.create_follow_up(conn, app_id=111111, user_id=1, thread_id="a",
                             subject="s", body="b", reason="r")
     db.create_follow_up(conn, app_id=222222, user_id=1, thread_id="b",
@@ -36,7 +34,6 @@ def test_existing_followup_app_ids_excludes_rejected(conn):
 
 
 def test_resume_roundtrip(conn):
-    db.init_ai_schema(conn)
     assert db.get_resume(conn, 42) is None
     db.upsert_resume(conn, 42, "resume v1")
     assert db.get_resume(conn, 42) == "resume v1"
@@ -46,7 +43,6 @@ def test_resume_roundtrip(conn):
 
 
 def test_app_ai_jd_match_optimize(conn):
-    db.init_ai_schema(conn)
     db.upsert_jd(conn, 5, 42, "job description text")
     row = db.get_app_ai(conn, 5, 42)
     assert row["jd_text"] == "job description text"
@@ -61,7 +57,6 @@ def test_app_ai_jd_match_optimize(conn):
 
 
 def test_upsert_jd_does_not_clobber_other_users_app(conn):
-    db.init_ai_schema(conn)
     db.upsert_jd(conn, 7, 42, "owner jd")
     db.upsert_jd(conn, 7, 99, "attacker jd")     # foreign user, same app_id
     assert db.get_app_ai(conn, 7, 42)["jd_text"] == "owner jd"   # unchanged

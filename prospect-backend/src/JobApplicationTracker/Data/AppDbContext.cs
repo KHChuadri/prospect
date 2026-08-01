@@ -29,5 +29,9 @@ public class AppDbContext : DbContext
     modelBuilder.Entity<User>()
       .HasIndex(u => u.Email)
       .IsUnique();
+
+    // Tables the Python agent owns. Declared here so EF is the single source of
+    // truth for every table in this database; no .NET code queries them.
+    modelBuilder.ConfigureAgentTables();
   }
 }
