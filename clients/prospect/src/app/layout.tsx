@@ -20,7 +20,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Job Application Tracker",
+  title: "Prospect",
   description: "Track your job applications, statuses, and notes",
 };
 
