@@ -29,7 +29,7 @@ test('lists pending recommendations and accepts one', async () => {
 test('accept reuses an existing matching application instead of creating a duplicate', async () => {
   const { server } = await import('../mocks/server')
   const { http, HttpResponse } = await import('msw')
-  const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5135'
+  const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5135/api'
   const AGENT = process.env.NEXT_PUBLIC_AGENT_URL ?? 'http://localhost:8000'
 
   let createCalls = 0
@@ -37,7 +37,7 @@ test('accept reuses an existing matching application instead of creating a dupli
 
   server.use(
     // an application matching the pending rec (Acme Corp / Backend Engineer) already exists
-    http.get(`${BASE}/api/applications`, () =>
+    http.get(`${BASE}/applications`, () =>
       HttpResponse.json([
         {
           id: 7, userId: 1, company: 'Acme Corp', role: 'Backend Engineer',
@@ -46,7 +46,7 @@ test('accept reuses an existing matching application instead of creating a dupli
         },
       ]),
     ),
-    http.post(`${BASE}/api/applications`, () => {
+    http.post(`${BASE}/applications`, () => {
       createCalls += 1
       return HttpResponse.json({}, { status: 201 })
     }),
