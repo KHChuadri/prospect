@@ -2,12 +2,7 @@ from datetime import datetime, timezone
 from followup_agent import db
 
 
-def _seed(conn):
-    db.init_reco_schema(conn)
-
-
 def test_create_list_and_dedup_message_id(conn):
-    _seed(conn)
     rid = db.create_recommendation(
         conn, user_id=1, source_message_id="m1", source_sender="jobs@acme.com",
         company="Acme", role="Backend Engineer", location="Remote",
@@ -29,7 +24,6 @@ def test_create_list_and_dedup_message_id(conn):
 
 
 def test_existing_job_keys_includes_pending_recs(conn):
-    _seed(conn)
     db.create_recommendation(
         conn, user_id=1, source_message_id="m2", source_sender="s",
         company="Beta Co", role="PM", location=None, url=None, raw_snippet="",
@@ -39,7 +33,6 @@ def test_existing_job_keys_includes_pending_recs(conn):
 
 
 def test_update_and_sync_state(conn):
-    _seed(conn)
     rid = db.create_recommendation(
         conn, user_id=1, source_message_id="m3", source_sender="s",
         company="Gamma", role="SRE", location=None, url=None, raw_snippet="",
