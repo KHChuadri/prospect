@@ -15,7 +15,9 @@ import type {
 } from './types'
 import { clearTokens, getRefreshToken, getToken, setTokens } from './auth'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5135'
+// Includes the /api prefix, so call sites below use bare paths — same shape as
+// AGENT_URL further down. Keeps the prefix in exactly one place per service.
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5135/api'
 
 export const api = axios.create({ baseURL: BASE_URL })
 
@@ -56,7 +58,7 @@ api.interceptors.response.use(
 
     try {
       const { data } = await axios.post<AuthResponse>(
-        `${BASE_URL}/api/auth/refresh`,
+        `${BASE_URL}/auth/refresh`,
         JSON.stringify(refreshToken), // backend expects raw JSON string
         { headers: { 'Content-Type': 'application/json' } },
       )
@@ -77,32 +79,32 @@ api.interceptors.response.use(
 
 export const authApi = {
   register: (email: string, password: string) =>
-    api.post<AuthResponse>('/api/auth/register', { email, password }),
+    api.post<AuthResponse>('/auth/register', { email, password }),
   login: (email: string, password: string) =>
-    api.post<AuthResponse>('/api/auth/login', { email, password }),
-  revoke: () => api.post('/api/auth/revoke'),
+    api.post<AuthResponse>('/auth/login', { email, password }),
+  revoke: () => api.post('/auth/revoke'),
 }
 
 export const applicationsApi = {
   getAll: (status?: ApplicationStatus) =>
-    api.get<JobApplication[]>('/api/applications', {
+    api.get<JobApplication[]>('/applications', {
       params: status ? { status } : undefined,
     }),
-  getById: (id: number) => api.get<JobApplication>(`/api/applications/${id}`),
+  getById: (id: number) => api.get<JobApplication>(`/applications/${id}`),
   create: (dto: CreateApplicationInput) =>
-    api.post<JobApplication>('/api/applications', dto),
+    api.post<JobApplication>('/applications', dto),
   update: (id: number, dto: UpdateApplicationInput) =>
-    api.patch<JobApplication>(`/api/applications/${id}`, dto),
-  delete: (id: number) => api.delete(`/api/applications/${id}`),
+    api.patch<JobApplication>(`/applications/${id}`, dto),
+  delete: (id: number) => api.delete(`/applications/${id}`),
   updateStatus: (id: number, newStatus: ApplicationStatus) =>
-    api.patch<JobApplication>(`/api/applications/${id}/status`, { newStatus }),
+    api.patch<JobApplication>(`/applications/${id}/status`, { newStatus }),
 }
 
 export const notesApi = {
   getAll: (applicationId: number) =>
-    api.get<Note[]>(`/api/applications/${applicationId}/notes`),
+    api.get<Note[]>(`/applications/${applicationId}/notes`),
   create: (applicationId: number, content: string) =>
-    api.post<Note>(`/api/applications/${applicationId}/notes`, { content }),
+    api.post<Note>(`/applications/${applicationId}/notes`, { content }),
 }
 
 const AGENT_URL = process.env.NEXT_PUBLIC_AGENT_URL ?? 'http://localhost:8000'
