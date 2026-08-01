@@ -5,125 +5,14 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Json
 from followup_agent.models import AppRow, ELIGIBLE_STATUSES
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS follow_ups (
-    id              SERIAL PRIMARY KEY,
-    app_id          INTEGER NOT NULL,
-    user_id         INTEGER NOT NULL,
-    thread_id       TEXT NOT NULL,
-    status          TEXT NOT NULL DEFAULT 'pending',
-    draft_subject   TEXT NOT NULL,
-    draft_body      TEXT NOT NULL,
-    recipient_email TEXT,
-    reason          TEXT NOT NULL DEFAULT '',
-    error           TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    decided_at      TIMESTAMPTZ,
-    sent_at         TIMESTAMPTZ
-);
-"""
-
-AI_SCHEMA = """
-CREATE TABLE IF NOT EXISTS resumes (
-    user_id     INTEGER PRIMARY KEY,
-    text        TEXT NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS app_ai (
-    app_id            INTEGER PRIMARY KEY,
-    user_id           INTEGER NOT NULL,
-    jd_text           TEXT NOT NULL,
-    match_json        JSONB,
-    optimized_resume  TEXT,
-    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-"""
-
-RECO_SCHEMA = """
-CREATE TABLE IF NOT EXISTS recommendations (
-    id                      SERIAL PRIMARY KEY,
-    user_id                 INTEGER NOT NULL,
-    source_message_id       TEXT NOT NULL UNIQUE,
-    source_sender           TEXT NOT NULL DEFAULT '',
-    company                 TEXT NOT NULL,
-    role                    TEXT NOT NULL,
-    location                TEXT,
-    url                     TEXT,
-    raw_snippet             TEXT NOT NULL DEFAULT '',
-    status                  TEXT NOT NULL DEFAULT 'pending',
-    accepted_application_id INTEGER,
-    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    decided_at              TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS gmail_sync_state (
-    user_id        INTEGER PRIMARY KEY,
-    last_polled_at TIMESTAMPTZ NOT NULL
-);
-"""
-
-EVENTS_SCHEMA = """
-CREATE TABLE IF NOT EXISTS events (
-    id            SERIAL PRIMARY KEY,
-    source_name   TEXT NOT NULL,
-    source_uid    TEXT NOT NULL,
-    url           TEXT NOT NULL,
-    title         TEXT NOT NULL,
-    description   TEXT NOT NULL DEFAULT '',
-    starts_at     TIMESTAMPTZ,
-    ends_at       TIMESTAMPTZ,
-    location      TEXT,
-    is_online     BOOLEAN NOT NULL DEFAULT false,
-    organizations TEXT[] NOT NULL DEFAULT '{}',
-    topics        TEXT[] NOT NULL DEFAULT '{}',
-    event_type    TEXT,
-    raw_snippet   TEXT NOT NULL DEFAULT '',
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (source_name, source_uid)
-);
-
-CREATE INDEX IF NOT EXISTS events_starts_idx ON events (starts_at);
-
--- Events are public, so the event row is global. Only the user's opinion is
--- per-user, and only once they have one — no row means undecided. This is why
--- events has no user_id: putting one there would mean crawling and storing the
--- same event once per user, and multi-user would become a data migration.
-CREATE TABLE IF NOT EXISTS user_events (
-    user_id    INTEGER NOT NULL,
-    event_id   INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    status     TEXT NOT NULL,
-    decided_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, event_id)
-);
-
-CREATE TABLE IF NOT EXISTS events_crawl_state (
-    source_name     TEXT PRIMARY KEY,
-    last_crawled_at TIMESTAMPTZ NOT NULL,
-    last_error      TEXT
-);
-
--- In SQL rather than Python so the company match runs inside the query
--- instead of pulling both lists into the API process.
-CREATE OR REPLACE FUNCTION normalize_company(name TEXT)
-RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
-    SELECT btrim(regexp_replace(
-        regexp_replace(lower(coalesce(name, '')),
-            '\\s+(ltd|limited|inc|incorporated|plc|corp|corporation|pty|llc)\\.?$',
-            '', 'g'),
-        '\\s+', ' ', 'g'));
-$$;
-"""
+# Schema lives in the .NET project's EF Core migrations, which own every
+# table in this database — see prospect-backend/.../Data/AgentTablesConfiguration.cs.
+# This module only queries; it no longer creates anything.
 
 _ALLOWED_UPDATE = {"status", "recipient_email", "draft_subject", "draft_body",
                    "error", "decided_at", "sent_at"}
 
 _ALLOWED_RECO_UPDATE = {"status", "accepted_application_id", "decided_at"}
-
-
-def init_schema(conn: psycopg.Connection) -> None:
-    with conn.cursor() as cur:
-        cur.execute(SCHEMA)
 
 
 def fetch_candidate_apps(conn: psycopg.Connection) -> list[AppRow]:
@@ -189,11 +78,6 @@ def update_follow_up(conn, follow_up_id, **fields) -> None:
         cur.execute(f"UPDATE follow_ups SET {sets} WHERE id = %s", values)
 
 
-def init_ai_schema(conn: psycopg.Connection) -> None:
-    with conn.cursor() as cur:
-        cur.execute(AI_SCHEMA)
-
-
 def upsert_resume(conn, user_id: int, text: str) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -247,11 +131,6 @@ def save_optimized(conn, app_id: int, user_id: int, text: str) -> None:
             "WHERE app_id = %s AND user_id = %s",
             (text, app_id, user_id),
         )
-
-
-def init_reco_schema(conn: psycopg.Connection) -> None:
-    with conn.cursor() as cur:
-        cur.execute(RECO_SCHEMA)
 
 
 def existing_message_ids(conn) -> set[str]:
@@ -341,11 +220,6 @@ def set_sync_state(conn, user_id, ts) -> None:
             "SET last_polled_at = EXCLUDED.last_polled_at",
             (user_id, ts),
         )
-
-
-def init_events_schema(conn: psycopg.Connection) -> None:
-    with conn.cursor() as cur:
-        cur.execute(EVENTS_SCHEMA)
 
 
 def existing_source_uids(conn) -> set[tuple[str, str]]:

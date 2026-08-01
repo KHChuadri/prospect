@@ -29,8 +29,7 @@ if not sources:
 
 conn = psycopg.connect(settings.database_url)
 try:
-    db.init_events_schema(conn)
-    conn.commit()
+    # Tables come from the backend's EF migrations; nothing to create here.
     ids = crawl.run_events_batch(
         conn, sources=sources, fetch_fn=fetcher.get,
         extract_fn=lambda text, url: llm.extract_event(html_to_text(text), settings),
