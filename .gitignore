@@ -1,3 +1,9 @@
 
 # superpowers brainstorming session artifacts
 .superpowers/
+
+# Design specs and implementation plans. Kept on disk as working notes but not
+# tracked — they describe intent at a moment in time and go stale the moment the
+# code moves on, whereas docs/ARCHITECTURE.md and the commit history describe
+# what was actually built. Covers plans/ and specs/ and anything added later.
+docs/superpowers/
