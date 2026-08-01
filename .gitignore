@@ -1,4 +1,8 @@
 
+# Local environment files. agent/.env holds the LLM key, the Gmail refresh
+# token and EVENTBRITE_TOKEN — agent/.env.example is the tracked template.
+.env
+
 # superpowers brainstorming session artifacts
 .superpowers/
 
