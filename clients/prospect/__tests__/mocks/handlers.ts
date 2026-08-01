@@ -2,7 +2,7 @@
 import { http, HttpResponse } from 'msw'
 import type { JobApplication, Note, Recommendation } from '@/lib/types'
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5135'
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5135/api'
 const AGENT = process.env.NEXT_PUBLIC_AGENT_URL ?? 'http://localhost:8000'
 
 export const mockApplication: JobApplication = {
@@ -41,25 +41,25 @@ export const mockRecommendation: Recommendation = {
 }
 
 export const handlers = [
-  http.post(`${BASE}/api/auth/login`, () =>
+  http.post(`${BASE}/auth/login`, () =>
     HttpResponse.json({ accessToken: 'access-tok', refreshToken: 'refresh-tok' }),
   ),
-  http.post(`${BASE}/api/auth/register`, () =>
+  http.post(`${BASE}/auth/register`, () =>
     HttpResponse.json({ accessToken: 'access-tok', refreshToken: 'refresh-tok' }, { status: 201 }),
   ),
-  http.post(`${BASE}/api/auth/revoke`, () => new HttpResponse(null, { status: 204 })),
-  http.get(`${BASE}/api/applications`, () => HttpResponse.json([mockApplication])),
-  http.get(`${BASE}/api/applications/:id`, () => HttpResponse.json(mockApplication)),
-  http.post(`${BASE}/api/applications`, () =>
+  http.post(`${BASE}/auth/revoke`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${BASE}/applications`, () => HttpResponse.json([mockApplication])),
+  http.get(`${BASE}/applications/:id`, () => HttpResponse.json(mockApplication)),
+  http.post(`${BASE}/applications`, () =>
     HttpResponse.json(mockApplication, { status: 201 }),
   ),
-  http.patch(`${BASE}/api/applications/:id`, () => HttpResponse.json(mockApplication)),
-  http.delete(`${BASE}/api/applications/:id`, () => new HttpResponse(null, { status: 204 })),
-  http.patch(`${BASE}/api/applications/:id/status`, () =>
+  http.patch(`${BASE}/applications/:id`, () => HttpResponse.json(mockApplication)),
+  http.delete(`${BASE}/applications/:id`, () => new HttpResponse(null, { status: 204 })),
+  http.patch(`${BASE}/applications/:id/status`, () =>
     HttpResponse.json({ ...mockApplication, status: 'Screening' }),
   ),
-  http.get(`${BASE}/api/applications/:id/notes`, () => HttpResponse.json([mockNote])),
-  http.post(`${BASE}/api/applications/:id/notes`, () =>
+  http.get(`${BASE}/applications/:id/notes`, () => HttpResponse.json([mockNote])),
+  http.post(`${BASE}/applications/:id/notes`, () =>
     HttpResponse.json(mockNote, { status: 201 }),
   ),
   http.post(`${AGENT}/ai/extract`, () =>
