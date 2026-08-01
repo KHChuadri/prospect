@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { isAuthenticated, clearTokens } from '@/lib/auth'
 import { authApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -34,12 +35,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="glass sticky top-0 z-10 border-b border-border">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
-              <span
-                className="size-2.5 rounded-full bg-primary shadow-[0_0_12px_2px_var(--primary)]"
+            <Link href="/" className="flex items-center gap-2" aria-label="Prospect — home">
+              {/* Reversed mark: the app is dark-only (see globals.css), and the
+                  kit forbids recolouring, so this is the variant drawn for dark
+                  grounds rather than the two-colour on-light one. */}
+              <Image
+                src="/brand/prospect-mark.svg"
+                alt=""
+                width={22}
+                height={22}
+                priority
                 aria-hidden
               />
-              <span className="text-gradient">Job Tracker</span>
+              <span className="font-wordmark text-base font-semibold tracking-[-0.035em]">
+                Prospect
+              </span>
             </Link>
             <nav className="flex items-center gap-1">
               {navLinks.map((link) => {
