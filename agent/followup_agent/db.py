@@ -63,6 +63,58 @@ CREATE TABLE IF NOT EXISTS gmail_sync_state (
 );
 """
 
+EVENTS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS events (
+    id            SERIAL PRIMARY KEY,
+    source_name   TEXT NOT NULL,
+    source_uid    TEXT NOT NULL,
+    url           TEXT NOT NULL,
+    title         TEXT NOT NULL,
+    description   TEXT NOT NULL DEFAULT '',
+    starts_at     TIMESTAMPTZ,
+    ends_at       TIMESTAMPTZ,
+    location      TEXT,
+    is_online     BOOLEAN NOT NULL DEFAULT false,
+    organizations TEXT[] NOT NULL DEFAULT '{}',
+    topics        TEXT[] NOT NULL DEFAULT '{}',
+    event_type    TEXT,
+    raw_snippet   TEXT NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (source_name, source_uid)
+);
+
+CREATE INDEX IF NOT EXISTS events_starts_idx ON events (starts_at);
+
+-- Events are public, so the event row is global. Only the user's opinion is
+-- per-user, and only once they have one — no row means undecided. This is why
+-- events has no user_id: putting one there would mean crawling and storing the
+-- same event once per user, and multi-user would become a data migration.
+CREATE TABLE IF NOT EXISTS user_events (
+    user_id    INTEGER NOT NULL,
+    event_id   INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    status     TEXT NOT NULL,
+    decided_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, event_id)
+);
+
+CREATE TABLE IF NOT EXISTS events_crawl_state (
+    source_name     TEXT PRIMARY KEY,
+    last_crawled_at TIMESTAMPTZ NOT NULL,
+    last_error      TEXT
+);
+
+-- In SQL rather than Python so the company match runs inside the query
+-- instead of pulling both lists into the API process.
+CREATE OR REPLACE FUNCTION normalize_company(name TEXT)
+RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+    SELECT btrim(regexp_replace(
+        regexp_replace(lower(coalesce(name, '')),
+            '\\s+(ltd|limited|inc|incorporated|plc|corp|corporation|pty|llc)\\.?$',
+            '', 'g'),
+        '\\s+', ' ', 'g'));
+$$;
+"""
+
 _ALLOWED_UPDATE = {"status", "recipient_email", "draft_subject", "draft_body",
                    "error", "decided_at", "sent_at"}
 
@@ -288,4 +340,102 @@ def set_sync_state(conn, user_id, ts) -> None:
             "VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE "
             "SET last_polled_at = EXCLUDED.last_polled_at",
             (user_id, ts),
+        )
+
+
+def init_events_schema(conn: psycopg.Connection) -> None:
+    with conn.cursor() as cur:
+        cur.execute(EVENTS_SCHEMA)
+
+
+def existing_source_uids(conn) -> set[tuple[str, str]]:
+    """Gate 1's lookup — every (source, uid) already stored."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT source_name, source_uid FROM events")
+        return {(r[0], r[1]) for r in cur.fetchall()}
+
+
+def create_event(conn, *, source_name, source_uid, url, title, description,
+                 starts_at, ends_at, location, is_online, organizations,
+                 topics, event_type, raw_snippet) -> Optional[int]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO events "
+            "(source_name, source_uid, url, title, description, starts_at, "
+            " ends_at, location, is_online, organizations, topics, "
+            " event_type, raw_snippet) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+            "ON CONFLICT (source_name, source_uid) DO NOTHING RETURNING id",
+            (source_name, source_uid, url, title, description, starts_at,
+             ends_at, location, is_online, list(organizations), list(topics),
+             event_type, raw_snippet),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+# company_match is computed per request, never stored. An event crawled last
+# week lights up the moment the user adds an application to that company —
+# nothing to backfill, and it cannot go stale.
+_LIST_EVENTS_SQL = """
+SELECT e.*,
+       ue.status,
+       EXISTS (
+         SELECT 1 FROM "JobApplications" ja
+          WHERE ja."UserId" = %(uid)s
+            AND normalize_company(ja."Company") IN (
+                  SELECT normalize_company(o) FROM unnest(e.organizations) AS o)
+       ) AS company_match
+  FROM events e
+  LEFT JOIN user_events ue
+         ON ue.event_id = e.id AND ue.user_id = %(uid)s
+ WHERE (e.starts_at IS NULL OR e.starts_at >= now())
+   AND {status_filter}
+ ORDER BY e.starts_at ASC NULLS LAST
+"""
+
+
+def list_events(conn, user_id: int, *, saved: bool = False) -> list[dict]:
+    status_filter = (
+        "ue.status = 'interested'" if saved
+        else "ue.status IS DISTINCT FROM 'dismissed'"
+    )
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(_LIST_EVENTS_SQL.format(status_filter=status_filter),
+                    {"uid": user_id})
+        return cur.fetchall()
+
+
+def get_event(conn, event_id: int) -> Optional[dict]:
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute("SELECT * FROM events WHERE id = %s", (event_id,))
+        return cur.fetchone()
+
+
+def set_event_decision(conn, user_id: int, event_id: int, status: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO user_events (user_id, event_id, status) "
+            "VALUES (%s, %s, %s) "
+            "ON CONFLICT (user_id, event_id) DO UPDATE "
+            "SET status = EXCLUDED.status, decided_at = now()",
+            (user_id, event_id, status),
+        )
+
+
+def clear_event_decision(conn, user_id: int, event_id: int) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM user_events WHERE user_id = %s AND event_id = %s",
+            (user_id, event_id),
+        )
+
+
+def record_crawl_state(conn, source_name: str, *, error: Optional[str] = None) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO events_crawl_state (source_name, last_crawled_at, last_error) "
+            "VALUES (%s, now(), %s) ON CONFLICT (source_name) DO UPDATE "
+            "SET last_crawled_at = now(), last_error = EXCLUDED.last_error",
+            (source_name, error),
         )

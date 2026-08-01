@@ -12,3 +12,5 @@ python-dotenv==1.*
 google-api-python-client==2.*
 google-auth==2.*
 google-auth-oauthlib==1.*
+selectolax==0.3.*
+pyyaml==6.*

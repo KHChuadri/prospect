@@ -56,6 +56,10 @@ services:
       GMAIL_LABEL: ${GMAIL_LABEL:-job-alerts}
       RECO_USER_ID: ${RECO_USER_ID:-1}
       RECO_POLL_MINUTES: ${RECO_POLL_MINUTES:-15}
+      EVENTS_LOCATION: ${EVENTS_LOCATION:-Sydney}
+      EVENTS_POLL_HOURS: ${EVENTS_POLL_HOURS:-12}
+      EVENTBRITE_TOKEN: ${EVENTBRITE_TOKEN:-}
+      EVENTS_USER_AGENT: ${EVENTS_USER_AGENT:-Prospect-EventCrawler/1.0 (+https://github.com/KHChuadri/Prospect)}
 
 volumes:
   pgdata:
