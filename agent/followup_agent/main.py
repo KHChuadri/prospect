@@ -18,13 +18,10 @@ _checkpointer_cm = PostgresSaver.from_conn_string(settings.database_url)
 checkpointer = _checkpointer_cm.__enter__()
 checkpointer.setup()
 
-# Ensure agent-owned tables exist.
-with psycopg.connect(settings.database_url) as _c:
-    db.init_schema(_c)
-    db.init_ai_schema(_c)
-    db.init_reco_schema(_c)
-    db.init_events_schema(_c)
-    _c.commit()
+# Tables are created by the .NET project's EF Core migrations, which run at
+# backend startup (Program.cs) and own every table in this database — including
+# the ones only this agent reads and writes. supervisord starts the backend
+# first so the schema is in place before anything here touches it.
 
 
 def _assess_fn(app):

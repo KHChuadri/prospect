@@ -7,7 +7,8 @@ SOON = datetime.now(timezone.utc) + timedelta(days=7)
 
 @pytest.fixture
 def schema(conn):
-    db.init_events_schema(conn)
+    # Tables come from EF migrations now; conn already points at a migrated
+    # database. Kept as a fixture so the tests below read unchanged.
     return conn
 
 
