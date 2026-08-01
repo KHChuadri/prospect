@@ -16,6 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/follow-ups', label: 'Follow-ups' },
     { href: '/resume', label: 'Résumé' },
     { href: '/recommendations', label: 'Recommendations' },
+    { href: '/events', label: 'Events' },
   ]
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import type {
   AuthResponse,
   ApplicationStatus,
   CreateApplicationInput,
+  EventItem,
   Extraction,
   FollowUp,
   JobApplication,
@@ -144,4 +145,12 @@ export const recommendationsApi = {
     }),
   dismiss: (id: number) =>
     agentApi.post<Recommendation>(`/recommendations/${id}/dismiss`),
+}
+
+export const eventsApi = {
+  list: (saved = false) =>
+    agentApi.get<EventItem[]>('/events', { params: { saved } }),
+  interested: (id: number) => agentApi.post<EventItem>(`/events/${id}/interested`),
+  dismiss: (id: number) => agentApi.post<EventItem>(`/events/${id}/dismiss`),
+  undo: (id: number) => agentApi.delete<EventItem>(`/events/${id}/decision`),
 }
