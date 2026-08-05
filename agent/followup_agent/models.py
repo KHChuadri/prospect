@@ -44,6 +44,33 @@ class OptimizedResume(BaseModel):
     optimized_resume: str
 
 
+class ResumeExperience(BaseModel):
+    company: str = ""
+    title: str = ""
+    start: Optional[str] = None
+    end: Optional[str] = None
+    bullets: list[str] = []
+
+
+class ResumeEducation(BaseModel):
+    school: str = ""
+    degree: str = ""
+    year: Optional[str] = None
+
+
+class ResumeProfile(BaseModel):
+    # Every field has a default: a hedging or truncated LLM response should
+    # produce a thin profile, not a validation error that loses the upload.
+    name: str = ""
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    links: list[str] = []
+    skills: list[str] = []
+    experience: list[ResumeExperience] = []
+    education: list[ResumeEducation] = []
+
+
 class FollowUpState(TypedDict, total=False):
     app: dict          # AppRow as dict (LangGraph state must be serializable)
     warranted: bool

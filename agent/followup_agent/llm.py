@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 from followup_agent.models import (
-    AppRow, Draft, Extraction, MatchResult, OptimizedResume,
+    AppRow, Draft, Extraction, MatchResult, OptimizedResume, ResumeProfile,
     ParsedEmail, RecommendationExtract, EventExtract,
 )
 from followup_agent.config import Settings
@@ -87,6 +87,23 @@ def optimize(resume_text: str, jd_text: str, settings: Settings) -> OptimizedRes
     return structured.invoke(
         [{"role": "system", "content": OPTIMIZE_PROMPT},
          {"role": "user", "content": f"RÉSUMÉ:\n{resume_text}\n\nJOB DESCRIPTION:\n{jd_text}"}]
+    )
+
+
+PARSE_RESUME_SYSTEM = (
+    "You extract structured data from a résumé. Use only what the document "
+    "actually says — never invent an employer, date, qualification, or "
+    "contact detail. Leave a field empty or null when the résumé does not "
+    "state it. For each role capture the bullet points describing what the "
+    "person did, staying close to the original wording."
+)
+
+
+def parse_resume(resume_text: str, settings: Settings) -> ResumeProfile:
+    structured = _chat(settings).with_structured_output(ResumeProfile)
+    return structured.invoke(
+        [{"role": "system", "content": PARSE_RESUME_SYSTEM},
+         {"role": "user", "content": resume_text}]
     )
 
 
