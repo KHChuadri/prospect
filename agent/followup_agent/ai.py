@@ -119,6 +119,18 @@ def create_ai_router(settings: Settings, conn_factory) -> APIRouter:
             raise HTTPException(503, "résumé upload is not configured")
 
         try:
+            size = storage.object_size(settings, body.key)
+        except storage.ObjectNotFound:
+            raise HTTPException(404, "uploaded file not found")
+        except Exception:
+            raise HTTPException(502, "storage unavailable")
+        if size > MAX_RESUME_BYTES:
+            # The client's declared size at upload-url time is advisory only;
+            # this is the point where the 5 MB limit is actually enforced.
+            _discard_stored_file(body.key)
+            raise HTTPException(413, "that PDF is larger than 5 MB")
+
+        try:
             data = storage.get_object(settings, body.key)
         except storage.ObjectNotFound:
             raise HTTPException(404, "uploaded file not found")

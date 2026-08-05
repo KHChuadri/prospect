@@ -68,15 +68,21 @@ class _Body:
 
 
 class FakeS3:
-    def __init__(self, *, data=b"", error_code=None):
+    def __init__(self, *, data=b"", error_code=None, content_length=None):
         self._data = data
         self._error_code = error_code
+        self._content_length = content_length
         self.deleted = []
 
     def get_object(self, Bucket, Key):
         if self._error_code:
             raise ClientError({"Error": {"Code": self._error_code}}, "GetObject")
         return {"Body": _Body(self._data)}
+
+    def head_object(self, Bucket, Key):
+        if self._error_code:
+            raise ClientError({"Error": {"Code": self._error_code}}, "HeadObject")
+        return {"ContentLength": self._content_length}
 
     def delete_object(self, Bucket, Key):
         self.deleted.append(Key)
@@ -104,3 +110,15 @@ def test_delete_object_calls_through(monkeypatch):
     monkeypatch.setattr(storage, "_client", lambda s: fake)
     storage.delete_object(_settings(), "resumes/42/old.pdf")
     assert fake.deleted == ["resumes/42/old.pdf"]
+
+
+def test_object_size_returns_the_content_length(monkeypatch):
+    monkeypatch.setattr(storage, "_client",
+                        lambda s: FakeS3(content_length=4096))
+    assert storage.object_size(_settings(), "resumes/42/a.pdf") == 4096
+
+
+def test_object_size_translates_a_missing_key(monkeypatch):
+    monkeypatch.setattr(storage, "_client", lambda s: FakeS3(error_code="404"))
+    with pytest.raises(storage.ObjectNotFound):
+        storage.object_size(_settings(), "resumes/42/gone.pdf")

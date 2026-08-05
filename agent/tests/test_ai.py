@@ -111,6 +111,10 @@ def test_match_returns_cache_without_calling_llm(monkeypatch):
 
 def _configure_storage(monkeypatch, configured=True):
     monkeypatch.setattr(storage, "is_configured", lambda s: configured)
+    # Ingest checks size before reading the object; default to something
+    # comfortably under the limit so tests that don't care about size can
+    # ignore it.
+    monkeypatch.setattr(storage, "object_size", lambda s, key: 1000)
 
 
 def test_upload_url_requires_auth():
@@ -253,6 +257,7 @@ def test_ingest_saves_text_even_when_the_llm_fails(monkeypatch):
     assert r.json()["text"] == RESUME_TEXT
     assert r.json()["profile"] is None
     assert r.json()["warning"]
+    assert saved["text"] == RESUME_TEXT
     assert saved["parsed"] is None      # still persisted
 
 
@@ -269,6 +274,71 @@ def test_ingest_deletes_the_previously_stored_file(monkeypatch):
            json={"key": "resumes/42/new.pdf", "filename": "cv.pdf"},
            headers={"Authorization": f"Bearer {token(s, uid=42)}"})
     assert deleted == ["resumes/42/old.pdf"]
+
+
+def test_ingest_does_not_delete_when_re_ingesting_the_same_key(monkeypatch):
+    saved = {}
+    _ingest_happy_path(monkeypatch, saved)
+    monkeypatch.setattr(db, "get_resume_row",
+                        lambda conn, uid: {"file_key": "resumes/42/same.pdf"})
+    deleted = []
+    monkeypatch.setattr(storage, "delete_object",
+                        lambda s, key: deleted.append(key))
+    c, s = make_client()
+    r = c.post("/ai/resume/ingest",
+               json={"key": "resumes/42/same.pdf", "filename": "cv.pdf"},
+               headers={"Authorization": f"Bearer {token(s, uid=42)}"})
+    assert r.status_code == 200
+    assert deleted == []
+
+
+# ------------------------------------------------------- ingest size limit
+
+def test_ingest_rejects_an_oversized_object(monkeypatch):
+    saved = {}
+    _ingest_happy_path(monkeypatch, saved)
+    monkeypatch.setattr(storage, "object_size",
+                        lambda s, key: ai.MAX_RESUME_BYTES + 1)
+
+    def boom(s, key): raise AssertionError("get_object must not be called")
+    monkeypatch.setattr(storage, "get_object", boom)
+    deleted = []
+    monkeypatch.setattr(storage, "delete_object",
+                        lambda s, key: deleted.append(key))
+    c, s = make_client()
+    r = c.post("/ai/resume/ingest",
+               json={"key": "resumes/42/big.pdf", "filename": "cv.pdf"},
+               headers={"Authorization": f"Bearer {token(s, uid=42)}"})
+    assert r.status_code == 413
+    assert saved == {}
+    assert deleted == ["resumes/42/big.pdf"]
+
+
+def test_ingest_accepts_an_object_exactly_at_the_limit(monkeypatch):
+    saved = {}
+    _ingest_happy_path(monkeypatch, saved)
+    monkeypatch.setattr(storage, "object_size", lambda s, key: ai.MAX_RESUME_BYTES)
+    c, s = make_client()
+    r = c.post("/ai/resume/ingest",
+               json={"key": "resumes/42/exact.pdf", "filename": "cv.pdf"},
+               headers={"Authorization": f"Bearer {token(s, uid=42)}"})
+    assert r.status_code == 200
+    assert saved["text"] == RESUME_TEXT
+
+
+def test_ingest_returns_404_when_size_check_finds_no_object(monkeypatch):
+    _configure_storage(monkeypatch)
+
+    def missing(s, key): raise storage.ObjectNotFound(key)
+    monkeypatch.setattr(storage, "object_size", missing)
+
+    def boom(s, key): raise AssertionError("get_object must not be called")
+    monkeypatch.setattr(storage, "get_object", boom)
+    c, s = make_client()
+    r = c.post("/ai/resume/ingest",
+               json={"key": "resumes/42/gone.pdf", "filename": "cv.pdf"},
+               headers={"Authorization": f"Bearer {token(s, uid=42)}"})
+    assert r.status_code == 404
 
 
 # --------------------------------------------------------------- get résumé

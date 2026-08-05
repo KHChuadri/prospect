@@ -63,5 +63,19 @@ def get_object(settings: Settings, key: str) -> bytes:
     return response["Body"].read()
 
 
+def object_size(settings: Settings, key: str) -> int:
+    """The object's byte size via HEAD, without reading its body.
+
+    Lets an oversized upload be rejected before it is ever pulled into memory.
+    """
+    try:
+        response = _client(settings).head_object(Bucket=settings.s3_bucket, Key=key)
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") in ("NoSuchKey", "404"):
+            raise ObjectNotFound(key) from e
+        raise
+    return response["ContentLength"]
+
+
 def delete_object(settings: Settings, key: str) -> None:
     _client(settings).delete_object(Bucket=settings.s3_bucket, Key=key)
