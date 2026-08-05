@@ -135,12 +135,54 @@ Eventbrite source skips itself and the HTML sources still run.
 
 ---
 
+## Résumé PDF upload (optional)
+
+The résumé page accepts a PDF upload as well as pasted text. Uploads go
+straight from the browser to an S3-compatible bucket via a presigned URL; the
+agent then reads the object back, extracts the text and parses it into a
+structured profile.
+
+Without a bucket configured the upload control reports that it is unavailable
+and the paste path works as normal — nothing else degrades.
+
+To enable it with [Cloudflare R2](https://developers.cloudflare.com/r2/)
+(10 GB/month free, no egress charges):
+
+1. Create an R2 bucket, e.g. `prospect-resumes`.
+2. Create an R2 API token scoped to that bucket with **Object Read & Write**.
+3. Put the endpoint, bucket, key id and secret in `agent/.env` — see
+   [`agent/.env.example`](agent/.env.example).
+4. Add a CORS policy on the bucket so the browser may `PUT` to it:
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["http://localhost:8080"],
+       "AllowedMethods": ["PUT"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+   Replace the origin with wherever the app is served from.
+
+AWS S3 works identically — point `S3_ENDPOINT_URL` at the regional S3 endpoint
+and set `S3_REGION` to the bucket's real region. Note that AWS's free tier is
+credit-based and expires six months after account creation, so the bucket will
+eventually be billed.
+
+Limits: PDF only, 5 MB, and no OCR — a scanned image with no text layer is
+rejected with a message asking you to paste the text instead.
+
+---
+
 ## Tests
 
 ```bash
 cd agent && python3 -m pytest              # 168 tests; needs a migrated database
 cd prospect-backend && dotnet test         # 14 tests
-cd clients/prospect && pnpm test           # 34 tests
+cd clients/prospect && pnpm test           # 38 tests
 ```
 
 The Python suite skips its database tests with a hint if the database isn't migrated.
