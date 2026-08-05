@@ -16,7 +16,7 @@ test('useExtract returns extracted fields', async () => {
 
 test('useResume reads the stored résumé', async () => {
   const { result } = renderHook(() => useResume(), { wrapper })
-  await waitFor(() => expect(result.current.data).toBe('my stored résumé'))
+  await waitFor(() => expect(result.current.data?.text).toBe('my stored résumé'))
 })
 
 test('useMatch returns a score', async () => {
