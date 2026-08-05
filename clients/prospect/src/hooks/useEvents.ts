@@ -3,10 +3,10 @@ import { eventsApi } from '@/lib/api'
 
 export const EVENTS_KEY = ['events'] as const
 
-export function useEvents(saved = false) {
+export function useEvents(saved = false, onlyLocal = true) {
   return useQuery({
-    queryKey: [...EVENTS_KEY, { saved }],
-    queryFn: () => eventsApi.list(saved).then((r) => r.data),
+    queryKey: [...EVENTS_KEY, { saved, onlyLocal }],
+    queryFn: () => eventsApi.list(saved, onlyLocal).then((r) => r.data),
   })
 }
 
