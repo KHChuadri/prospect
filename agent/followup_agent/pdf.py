@@ -34,7 +34,7 @@ _MIN_CHARS = 50
 def extract_text(data: bytes) -> str:
     try:
         reader = PdfReader(io.BytesIO(data))
-    except (PdfReadError, OSError, ValueError) as e:
+    except Exception as e:
         raise UnreadablePdfError(str(e)) from e
 
     if reader.is_encrypted:
@@ -50,7 +50,7 @@ def extract_text(data: bytes) -> str:
 
     try:
         pages = [page.extract_text() or "" for page in reader.pages]
-    except (PdfReadError, ValueError) as e:
+    except Exception as e:
         raise UnreadablePdfError(str(e)) from e
 
     text = _normalise("\n".join(pages))

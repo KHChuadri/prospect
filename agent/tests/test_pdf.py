@@ -93,3 +93,34 @@ def test_every_failure_shares_one_base_class():
     # Task 5 relies on being able to catch pdf.PdfError as a backstop.
     for exc in (pdf.EncryptedPdfError, pdf.NoTextLayerError, pdf.UnreadablePdfError):
         assert issubclass(exc, pdf.PdfError)
+
+
+def test_unexpected_parse_exception_is_converted(monkeypatch):
+    # pypdf is known to leak KeyError/IndexError (and plausibly others) from
+    # corrupt xref tables rather than always raising PdfReadError. Every such
+    # escape must still come out as a typed PdfError, or the HTTP layer that
+    # maps pdf.PdfError subclasses to 422 has no way to catch it.
+    def _raise(*args, **kwargs):
+        raise KeyError("mangled xref")
+
+    monkeypatch.setattr(pdf, "PdfReader", _raise)
+    with pytest.raises(pdf.UnreadablePdfError):
+        pdf.extract_text(b"irrelevant bytes")
+
+
+def test_every_failure_input_raises_the_shared_base_class():
+    # Proves the endpoint's `except pdf.PdfError` backstop actually covers
+    # every failure mode this module produces, not just the ones with their
+    # own dedicated test above.
+    with pytest.raises(pdf.PdfError):
+        pdf.extract_text(_make_pdf([]))
+
+    with pytest.raises(pdf.PdfError):
+        pdf.extract_text(b"this is a plain text file, not a PDF")
+
+    writer = PdfWriter(clone_from=io.BytesIO(_make_pdf(RESUME_LINES)))
+    writer.encrypt("hunter2")
+    buf = io.BytesIO()
+    writer.write(buf)
+    with pytest.raises(pdf.PdfError):
+        pdf.extract_text(buf.getvalue())
