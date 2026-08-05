@@ -53,6 +53,9 @@ public static class AgentTablesConfiguration
             e.HasKey(x => x.UserId).HasName("resumes_pkey");
             e.Property(x => x.UserId).HasColumnName("user_id").ValueGeneratedNever();
             e.Property(x => x.Text).HasColumnName("text");
+            e.Property(x => x.ParsedJson).HasColumnName("parsed_json").HasColumnType("jsonb");
+            e.Property(x => x.FileKey).HasColumnName("file_key");
+            e.Property(x => x.FileName).HasColumnName("file_name");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
         });
 
