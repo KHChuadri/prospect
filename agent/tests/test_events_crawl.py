@@ -21,9 +21,9 @@ class FakeSource:
         return self._candidates
 
 
-def _cand(uid, url=None, prefetched=None):
+def _cand(uid, url=None, prefetched=None, city="Sydney"):
     return Candidate(uid=uid, url=url or f"https://ex.test/{uid}",
-                     timezone=TZ, prefetched=prefetched)
+                     timezone=TZ, city=city, prefetched=prefetched)
 
 
 def _ev(title="Fintech Panel", start="2026-08-13T18:30:00", **kw):
@@ -217,6 +217,20 @@ def test_fetch_failure_on_one_page_does_not_stop_the_rest(monkeypatch):
     ids = _run([FakeSource("unsw", [_cand("bad"), _cand("good")])],
                fetch_fn=fetch_fn, extract_fn=lambda t, u: _ev(title=next(titles)))
     assert ids == [1]
+
+
+def test_extracted_city_wins_over_source_city(monkeypatch):
+    # A Sydney feed can list an event held overseas; the page is the more
+    # specific source of truth.
+    created = _setup(monkeypatch)
+    _run([FakeSource("s", [_cand("a", prefetched=_ev(city="Seoul"))])])
+    assert created[0]["city"] == "Seoul"
+
+
+def test_source_city_used_when_page_names_none(monkeypatch):
+    created = _setup(monkeypatch)
+    _run([FakeSource("s", [_cand("a", prefetched=_ev(city=None))])])
+    assert created[0]["city"] == "Sydney"
 
 
 def test_no_sync_cursor_is_written(monkeypatch):
