@@ -82,6 +82,7 @@ public class Event
     public DateTime? StartsAt { get; set; }
     public DateTime? EndsAt { get; set; }
     public string? Location { get; set; }
+    public string? City { get; set; }
     public bool IsOnline { get; set; }
     public string[] Organizations { get; set; } = [];
     public string[] Topics { get; set; } = [];
