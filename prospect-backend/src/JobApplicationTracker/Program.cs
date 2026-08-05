@@ -30,6 +30,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<INotesService, NotesService>();
+builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(builder.Configuration["Cors:Origins"]!.Split(","))
     .AllowAnyHeader()
