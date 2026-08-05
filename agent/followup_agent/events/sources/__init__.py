@@ -7,8 +7,8 @@ import yaml
 from followup_agent.models import EventExtract
 
 _REQUIRED = {
-    "generic": ("name", "type", "url", "link_pattern", "timezone"),
-    "eventbrite": ("name", "type", "timezone"),
+    "generic": ("name", "type", "url", "link_pattern", "timezone", "city"),
+    "eventbrite": ("name", "type", "timezone", "city"),
 }
 
 
@@ -23,6 +23,9 @@ class Candidate:
     uid: str
     url: str
     timezone: str
+    # The source's home city. Used only when the page itself names no city —
+    # see the resolution in events/crawl.py.
+    city: str = ""
     prefetched: Optional[EventExtract] = None
 
 

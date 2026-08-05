@@ -15,6 +15,7 @@ CFG = {
     "url": "https://ex.test/events",
     "link_pattern": "/event/",
     "timezone": "Australia/Sydney",
+    "city": "Sydney",
 }
 
 
@@ -40,6 +41,7 @@ def test_loads_config_from_yaml(tmp_path):
         "    url: https://ex.test/events\n"
         "    link_pattern: /event/\n"
         "    timezone: Australia/Sydney\n"
+        "    city: Sydney\n"
     )
     cfgs = load_source_configs(p)
     assert cfgs[0]["name"] == "unsw-events"
@@ -98,3 +100,32 @@ def test_page_cap_truncates_and_is_not_silent(capsys):
 def test_source_name_is_exposed():
     f = FakeFetcher({"https://ex.test/events": LISTING})
     assert GenericSource(CFG, f).name == "unsw-events"
+
+
+def test_source_missing_city_raises(tmp_path):
+    p = tmp_path / "s.yaml"
+    p.write_text(
+        "sources:\n"
+        "  - name: no-city\n"
+        "    type: generic\n"
+        "    url: https://ex.test/\n"
+        "    link_pattern: /event/\n"
+        "    timezone: Australia/Sydney\n"
+    )
+    with pytest.raises(ValueError, match="city"):
+        load_source_configs(p)
+
+
+def test_generic_source_stamps_city_on_candidates():
+    class FakeFetcher:
+        def get(self, url):
+            return '<a href="https://ex.test/event/a">A</a>'
+
+    src = GenericSource(
+        {"name": "s", "type": "generic", "url": "https://ex.test/",
+         "link_pattern": "/event/", "timezone": "Australia/Sydney",
+         "city": "Sydney"},
+        FakeFetcher(),
+    )
+    cands = src.discover()
+    assert cands and all(c.city == "Sydney" for c in cands)

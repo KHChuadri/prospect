@@ -6,6 +6,10 @@
 #
 # timezone is REQUIRED. Pages print local times with no offset, and starts_at
 # is an absolute instant — get this wrong and every event shows on the wrong day.
+#
+# city is REQUIRED. It is the fallback used when a page names no city of its
+# own — see the resolution in events/crawl.py. Get it wrong and events from
+# this source are filtered into the wrong city.
 
 sources:
   # Whole-university feed: mostly concerts, exhibitions and public lectures,
@@ -16,7 +20,9 @@ sources:
     url: https://www.events.unsw.edu.au/
     link_pattern: "/event/"
     timezone: Australia/Sydney
+    city: Sydney
 
   - name: eventbrite
     type: eventbrite
     timezone: Australia/Sydney
+    city: Sydney

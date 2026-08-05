@@ -45,6 +45,7 @@ class EventbriteSource:
                  client: Optional[httpx.Client] = None, max_pages: int = 25):
         self.name = cfg["name"]
         self.timezone = cfg["timezone"]
+        self.city = cfg["city"]
         self._token = token
         self._location = location
         self._client = client or httpx.Client(timeout=httpx.Timeout(10.0, connect=10.0))
@@ -76,5 +77,5 @@ class EventbriteSource:
             uid, url, ev = parse_event(raw)
             if uid and url:
                 out.append(Candidate(uid=uid, url=url, timezone=self.timezone,
-                                     prefetched=ev))
+                                     city=self.city, prefetched=ev))
         return out

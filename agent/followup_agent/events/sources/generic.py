@@ -16,6 +16,7 @@ class GenericSource:
         self.url = cfg["url"]
         self.link_pattern = cfg["link_pattern"]
         self.timezone = cfg["timezone"]
+        self.city = cfg["city"]
         self._fetcher = fetcher
         self._max_pages = max_pages
 
@@ -27,4 +28,5 @@ class GenericSource:
             print(f"[events] {self.name}: {len(links)} links, "
                   f"cap of {self._max_pages} applied — {len(links) - self._max_pages} skipped")
             links = links[:self._max_pages]
-        return [Candidate(uid=u, url=u, timezone=self.timezone) for u in links]
+        return [Candidate(uid=u, url=u, timezone=self.timezone, city=self.city)
+                for u in links]
