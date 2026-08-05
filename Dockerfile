@@ -49,6 +49,9 @@ COPY --from=frontend-build /app/.next/standalone /app/web
 COPY --from=frontend-build /app/.next/static /app/web/.next/static
 COPY --from=frontend-build /app/public /app/web/public
 COPY agent/followup_agent /app/agent/followup_agent
+# The scheduler reads events_sources.yaml at runtime; without it the crawl
+# silently finds zero sources. crawl_now.py rides along for manual crawls.
+COPY agent/crawl_now.py agent/events_sources.yaml /app/agent/
 
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY supervisord.conf /etc/supervisor/supervisord.conf
