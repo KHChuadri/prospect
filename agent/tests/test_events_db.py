@@ -13,12 +13,12 @@ def schema(conn):
 
 
 def _mk(conn, *, uid="u1", title="Fintech Panel", starts_at=SOON,
-        orgs=None, source="unsw-events"):
+        orgs=None, source="unsw-events", city="Sydney", is_online=False):
     return db.create_event(
         conn, source_name=source, source_uid=uid,
         url=f"https://example.test/{uid}", title=title,
         description="desc", starts_at=starts_at, ends_at=None,
-        location="Level39", is_online=False,
+        location="Level39", city=city, is_online=is_online,
         organizations=orgs if orgs is not None else ["Monzo"],
         topics=["fintech"], event_type="panel", raw_snippet="snip",
     )
@@ -144,6 +144,18 @@ def _apply(conn, *, user_id, company):
         (user_id, company))
 
 
+def _user(conn, *, user_id, city=None):
+    """Create the user if absent and set their city.
+
+    "JobApplications"."UserId" is a foreign key to "Users", so _apply already
+    inserts this row — the ON CONFLICT keeps the two helpers composable.
+    """
+    conn.execute(
+        'INSERT INTO "Users" ("Id","Email","PasswordHash","City") '
+        'VALUES (%s,%s,%s,%s) ON CONFLICT ("Id") DO UPDATE SET "City" = %s',
+        (user_id, f"user{user_id}@test.local", "x", city, city))
+
+
 def test_company_match_fires_on_exact_name(schema):
     _mk(schema, uid="cm1", orgs=["Monzo"])
     _apply(schema, user_id=1, company="Monzo")
@@ -176,3 +188,58 @@ def test_company_match_needs_no_recrawl_to_start_firing(schema):
     assert db.list_events(schema, user_id=1)[0]["company_match"] is False
     _apply(schema, user_id=1, company="Monzo")
     assert db.list_events(schema, user_id=1)[0]["company_match"] is True
+
+
+def test_company_matches_sort_first(schema):
+    # A match dated later than a non-match must still come first.
+    _mk(schema, uid="s1", title="Later, matching",
+        starts_at=SOON + timedelta(days=30), orgs=["Monzo"])
+    _mk(schema, uid="s2", title="Sooner, not matching",
+        starts_at=SOON + timedelta(days=1), orgs=["Nobody"])
+    _apply(schema, user_id=1, company="Monzo")
+
+    rows = db.list_events(schema, user_id=1, only_local=False)
+    assert rows[0]["title"] == "Later, matching"
+
+
+def test_only_local_hides_other_cities(schema):
+    _user(schema, user_id=1, city="Sydney")
+    _mk(schema, uid="l1", title="Local", city="Sydney")
+    _mk(schema, uid="l2", title="Away", city="Seoul")
+
+    rows = db.list_events(schema, user_id=1, only_local=True)
+    assert [r["title"] for r in rows] == ["Local"]
+
+
+def test_only_local_keeps_online_events(schema):
+    _user(schema, user_id=1, city="Sydney")
+    _mk(schema, uid="l3", title="Webinar", city="Seoul", is_online=True)
+
+    rows = db.list_events(schema, user_id=1, only_local=True)
+    assert [r["title"] for r in rows] == ["Webinar"]
+
+
+def test_only_local_hides_null_city(schema):
+    _user(schema, user_id=1, city="Sydney")
+    _mk(schema, uid="l4", title="Unknown city", city=None)
+
+    rows = db.list_events(schema, user_id=1, only_local=True)
+    assert rows == []
+
+
+def test_user_without_city_sees_everything(schema):
+    # The trap: filtering on a NULL city matches no rows at all, producing an
+    # empty page under a toggle that still looks enabled.
+    _user(schema, user_id=1, city=None)
+    _mk(schema, uid="l5", title="Away", city="Seoul")
+
+    rows = db.list_events(schema, user_id=1, only_local=True)
+    assert [r["title"] for r in rows] == ["Away"]
+
+
+def test_city_match_is_case_and_space_insensitive(schema):
+    _user(schema, user_id=1, city="  sydney ")
+    _mk(schema, uid="l6", title="Local", city="Sydney")
+
+    rows = db.list_events(schema, user_id=1, only_local=True)
+    assert [r["title"] for r in rows] == ["Local"]

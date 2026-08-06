@@ -113,6 +113,7 @@ public static class AgentTablesConfiguration
             e.Property(x => x.StartsAt).HasColumnName("starts_at");
             e.Property(x => x.EndsAt).HasColumnName("ends_at");
             e.Property(x => x.Location).HasColumnName("location");
+            e.Property(x => x.City).HasColumnName("city");
             e.Property(x => x.IsOnline).HasColumnName("is_online").HasDefaultValue(false);
             // text[] — Npgsql maps string[] natively; the agent reads these as
             // Python lists, so they must stay arrays rather than becoming jsonb.

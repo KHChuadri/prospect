@@ -262,20 +262,28 @@ def existing_source_uids(conn) -> set[tuple[str, str]]:
 
 
 def create_event(conn, *, source_name, source_uid, url, title, description,
-                 starts_at, ends_at, location, is_online, organizations,
+                 starts_at, ends_at, location, city, is_online, organizations,
                  topics, event_type, raw_snippet) -> Optional[int]:
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO events "
             "(source_name, source_uid, url, title, description, starts_at, "
-            " ends_at, location, is_online, organizations, topics, "
+            " ends_at, location, city, is_online, organizations, topics, "
             " event_type, raw_snippet) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
             "ON CONFLICT (source_name, source_uid) DO NOTHING RETURNING id",
             (source_name, source_uid, url, title, description, starts_at,
-             ends_at, location, is_online, list(organizations), list(topics),
-             event_type, raw_snippet),
+             ends_at, location, city, is_online, list(organizations),
+             list(topics), event_type, raw_snippet),
         )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def get_user_city(conn, user_id: int) -> Optional[str]:
+    """The viewer's home city, or None if they have not set one."""
+    with conn.cursor() as cur:
+        cur.execute('SELECT "City" FROM "Users" WHERE "Id" = %s', (user_id,))
         row = cur.fetchone()
         return row[0] if row else None
 
@@ -297,18 +305,29 @@ SELECT e.*,
          ON ue.event_id = e.id AND ue.user_id = %(uid)s
  WHERE (e.starts_at IS NULL OR e.starts_at >= now())
    AND {status_filter}
- ORDER BY e.starts_at ASC NULLS LAST
+   -- Online events have no meaningful city and must not be hidden from
+   -- everyone. A NULL city is treated as "not local".
+   AND (NOT %(only_local)s
+        OR e.is_online
+        OR lower(btrim(e.city)) = lower(btrim(%(city)s)))
+ ORDER BY company_match DESC, e.starts_at ASC NULLS LAST
 """
 
 
-def list_events(conn, user_id: int, *, saved: bool = False) -> list[dict]:
+def list_events(conn, user_id: int, *, saved: bool = False,
+                only_local: bool = True) -> list[dict]:
     status_filter = (
         "ue.status = 'interested'" if saved
         else "ue.status IS DISTINCT FROM 'dismissed'"
     )
+    city = get_user_city(conn, user_id)
+    # Filtering on a city the user never set matches no rows at all, which
+    # renders as an empty page under a toggle that still looks on.
+    if not city or not city.strip():
+        only_local = False
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(_LIST_EVENTS_SQL.format(status_filter=status_filter),
-                    {"uid": user_id})
+                    {"uid": user_id, "only_local": only_local, "city": city})
         return cur.fetchall()
 
 

@@ -14,7 +14,8 @@ RAW = {
     "organizer": {"name": "Monzo"},
 }
 
-CFG = {"name": "eventbrite", "type": "eventbrite", "timezone": "Australia/Sydney"}
+CFG = {"name": "eventbrite", "type": "eventbrite", "timezone": "Australia/Sydney",
+       "city": "Sydney"}
 
 
 def _client(handler):

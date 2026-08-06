@@ -9,6 +9,7 @@ import type {
   FollowUp,
   JobApplication,
   MatchResult,
+  Me,
   Note,
   Recommendation,
   ResumeIngestResult,
@@ -164,9 +165,17 @@ export const recommendationsApi = {
 }
 
 export const eventsApi = {
-  list: (saved = false) =>
-    agentApi.get<EventItem[]>('/events', { params: { saved } }),
+  list: (saved = false, onlyLocal = true) =>
+    agentApi.get<EventItem[]>('/events', {
+      params: { saved, only_local: onlyLocal },
+    }),
   interested: (id: number) => agentApi.post<EventItem>(`/events/${id}/interested`),
   dismiss: (id: number) => agentApi.post<EventItem>(`/events/${id}/dismiss`),
   undo: (id: number) => agentApi.delete<EventItem>(`/events/${id}/decision`),
+}
+
+// Uses api (the backend client), not agentApi — the user's city lives in Users.
+export const usersApi = {
+  me: () => api.get<Me>('/users/me'),
+  updateCity: (city: string | null) => api.put<Me>('/users/me', { city }),
 }

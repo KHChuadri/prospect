@@ -156,6 +156,7 @@ export interface EventItem {
   starts_at: string | null
   ends_at: string | null
   location: string | null
+  city: string | null
   is_online: boolean
   organizations: string[]
   topics: string[]
@@ -166,4 +167,9 @@ export interface EventItem {
   status: EventStatus | null
   // Derived per request against the user's JobApplications, never stored.
   company_match: boolean
+}
+
+export interface Me {
+  email: string
+  city: string | null
 }

@@ -165,11 +165,12 @@ def create_app(settings: Settings, conn_factory, graph) -> FastAPI:
 
     @app.get("/events")
     def list_events(saved: bool = False,
+                    only_local: bool = True,
                     authorization: Optional[str] = Header(default=None)):
         uid = require_user(authorization)
         conn = conn_factory()
         try:
-            return db.list_events(conn, uid, saved=saved)
+            return db.list_events(conn, uid, saved=saved, only_local=only_local)
         finally:
             conn.close()
 

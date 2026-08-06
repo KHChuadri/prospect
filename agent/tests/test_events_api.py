@@ -101,3 +101,27 @@ def test_repeated_interested_is_idempotent(client, monkeypatch):
     monkeypatch.setattr(db, "set_event_decision", lambda *a, **k: None)
     assert client.post("/events/7/interested", headers=HDR).status_code == 200
     assert client.post("/events/7/interested", headers=HDR).status_code == 200
+
+
+def test_only_local_defaults_to_true(client, monkeypatch):
+    seen = {}
+
+    def fake_list(conn, uid, **kw):
+        seen.update(kw)
+        return []
+
+    monkeypatch.setattr(db, "list_events", fake_list)
+    client.get("/events", headers=HDR)
+    assert seen["only_local"] is True
+
+
+def test_only_local_query_param_reaches_the_db_layer(client, monkeypatch):
+    seen = {}
+
+    def fake_list(conn, uid, **kw):
+        seen.update(kw)
+        return []
+
+    monkeypatch.setattr(db, "list_events", fake_list)
+    client.get("/events", params={"only_local": "false"}, headers=HDR)
+    assert seen["only_local"] is False

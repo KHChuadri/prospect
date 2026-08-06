@@ -12,6 +12,9 @@ public class User
   [Required]
   public string PasswordHash { get; set; } = string.Empty;
 
+  [MaxLength(100)]
+  public string? City { get; set; }
+
   public string? RefreshToken { get; set; }
   public DateTime? RefreshTokenExpiry { get; set; }
   public ICollection<JobApplication> Applications { get; set; } = [];

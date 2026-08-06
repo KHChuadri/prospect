@@ -80,6 +80,10 @@ def run_events_batch(
                 starts_at=starts_at,
                 ends_at=timeparse.to_utc(ev.ends_at_local, cand.timezone),
                 location=ev.location,
+                # The page is more specific than the source: a Sydney feed can
+                # list an event held overseas. Fall back only when it says
+                # nothing.
+                city=(ev.city or cand.city or None),
                 is_online=ev.is_online,
                 organizations=ev.organizations,
                 topics=ev.topics,

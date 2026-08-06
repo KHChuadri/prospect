@@ -117,6 +117,7 @@ class EventExtract(BaseModel):
     starts_at_local: Optional[str] = None
     ends_at_local: Optional[str] = None
     location: Optional[str] = None
+    city: Optional[str] = None
     is_online: bool = False
     organizations: list[str] = []
     topics: list[str] = []

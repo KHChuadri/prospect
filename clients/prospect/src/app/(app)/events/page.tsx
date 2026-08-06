@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   useEvents,
   useMarkInterested,
   useDismissEvent,
   useUndoEventDecision,
 } from '@/hooks/useEvents'
+import { useMe, useUpdateCity } from '@/hooks/useMe'
+import { guessCity } from '@/lib/tz'
 import type { EventItem } from '@/lib/types'
 
 function formatWhen(e: EventItem) {
@@ -100,7 +103,22 @@ function EventCard({ event, saved }: { event: EventItem; saved: boolean }) {
 export default function EventsPage() {
   const [saved, setSaved] = useState(false)
   const [onlyMatches, setOnlyMatches] = useState(false)
-  const { data: events, isLoading } = useEvents(saved)
+  const [onlyLocal, setOnlyLocal] = useState(true)
+  const { data: events, isLoading } = useEvents(saved, onlyLocal)
+  const { data: me } = useMe()
+  const updateCity = useUpdateCity()
+  // Null means "not edited yet", so the input reads through to the saved city
+  // rather than an effect copying one into the other.
+  const [cityDraft, setCityDraft] = useState<string | null>(null)
+  const cityValue = cityDraft ?? me?.city ?? ''
+
+  // Seed an empty city from the browser timezone, once. Never overwrites a
+  // city the user has already set.
+  useEffect(() => {
+    if (!me || me.city) return
+    const guess = guessCity()
+    if (guess) updateCity.mutate(guess)
+  }, [me])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filtering happens here, not at crawl time — so a filter can never
   // silently lose an event, and changing your mind costs no re-crawl.
@@ -130,12 +148,33 @@ export default function EventsPage() {
         >
           My companies
         </Button>
+        <Button
+          size="sm"
+          variant={onlyLocal ? 'default' : 'ghost'}
+          onClick={() => setOnlyLocal((v) => !v)}
+        >
+          My city
+        </Button>
+        <Input
+          className="h-8 w-40"
+          placeholder="Your city"
+          value={cityValue}
+          onChange={(e) => setCityDraft(e.target.value)}
+          onBlur={() => {
+            const next = cityValue.trim()
+            if (next !== (me?.city ?? '')) updateCity.mutate(next || null)
+          }}
+        />
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!isLoading && visible.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          {saved ? 'Nothing saved yet.' : 'No upcoming events right now.'}
+          {saved
+            ? 'Nothing saved yet.'
+            : onlyLocal && me?.city
+              ? `No upcoming events in ${me.city}. Turn off “My city” to see everywhere.`
+              : 'No upcoming events right now.'}
         </p>
       )}
 
