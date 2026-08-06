@@ -11,6 +11,8 @@ import type {
   MatchResult,
   Note,
   Recommendation,
+  ResumeIngestResult,
+  StoredResume,
   UpdateApplicationInput,
 } from './types'
 import { clearTokens, getRefreshToken, getToken, setTokens } from './auth'
@@ -128,8 +130,14 @@ export const followupsApi = {
 
 export const aiApi = {
   extract: (text: string) => agentApi.post<Extraction>('/ai/extract', { text }),
-  getResume: () => agentApi.get<{ text: string }>('/ai/resume'),
+  getResume: () => agentApi.get<StoredResume>('/ai/resume'),
   putResume: (text: string) => agentApi.put<{ ok: boolean }>('/ai/resume', { text }),
+  resumeUploadUrl: (filename: string, contentType: string, size: number) =>
+    agentApi.post<{ key: string; url: string }>('/ai/resume/upload-url', {
+      filename, content_type: contentType, size,
+    }),
+  resumeIngest: (key: string, filename: string) =>
+    agentApi.post<ResumeIngestResult>('/ai/resume/ingest', { key, filename }),
   putJd: (appId: number, text: string) =>
     agentApi.put<{ ok: boolean }>(`/ai/apps/${appId}/jd`, { text }),
   match: (appId: number, refresh = false) =>
@@ -137,6 +145,12 @@ export const aiApi = {
   optimize: (appId: number, refresh = false) =>
     agentApi.post<{ optimized_resume: string }>(`/ai/optimize/${appId}`, null, { params: { refresh } }),
 }
+
+// Deliberately a bare axios call rather than `agentApi`: that instance's
+// interceptor attaches an Authorization header, and a presigned URL already
+// carries its own signature — R2 rejects a request that has both.
+export const uploadToPresignedUrl = (url: string, file: File) =>
+  axios.put(url, file, { headers: { 'Content-Type': file.type } })
 
 export const recommendationsApi = {
   list: (status: Recommendation['status'] = 'pending') =>

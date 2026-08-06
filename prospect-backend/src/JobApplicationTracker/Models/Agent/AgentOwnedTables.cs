@@ -35,6 +35,9 @@ public class Resume
 {
     public int UserId { get; set; }
     public string Text { get; set; } = string.Empty;
+    public string? ParsedJson { get; set; }
+    public string? FileKey { get; set; }
+    public string? FileName { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
 

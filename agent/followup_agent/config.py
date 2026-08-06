@@ -41,6 +41,15 @@ class Settings:
     events_poll_hours: int = 12
     events_user_agent: str = ""
     eventbrite_token: str = ""
+    # S3-compatible object storage for uploaded résumé PDFs. Defaults are
+    # empty so the agent boots without a bucket; upload endpoints return 503
+    # until these are set. Endpoint is configurable so Cloudflare R2, AWS S3
+    # and MinIO all work without a code change.
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_region: str = "auto"
 
 
 def load_settings() -> Settings:
@@ -76,4 +85,9 @@ def load_settings() -> Settings:
             "EVENTS_USER_AGENT",
             "Prospect-EventCrawler/1.0 (+https://github.com/KHChuadri/Prospect)"),
         eventbrite_token=os.environ.get("EVENTBRITE_TOKEN", ""),
+        s3_endpoint_url=os.environ.get("S3_ENDPOINT_URL", ""),
+        s3_bucket=os.environ.get("S3_BUCKET", ""),
+        s3_access_key_id=os.environ.get("S3_ACCESS_KEY_ID", ""),
+        s3_secret_access_key=os.environ.get("S3_SECRET_ACCESS_KEY", ""),
+        s3_region=os.environ.get("S3_REGION", "auto"),
     )

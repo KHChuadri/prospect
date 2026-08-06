@@ -79,11 +79,18 @@ def update_follow_up(conn, follow_up_id, **fields) -> None:
 
 
 def upsert_resume(conn, user_id: int, text: str) -> None:
+    """Save pasted résumé text.
+
+    Clears the uploaded file and its parsed profile: both were derived from a
+    document the user has now written over, so keeping them would misreport
+    what is on file.
+    """
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO resumes (user_id, text) VALUES (%s, %s) "
             "ON CONFLICT (user_id) DO UPDATE "
-            "SET text = EXCLUDED.text, updated_at = now()",
+            "SET text = EXCLUDED.text, parsed_json = NULL, file_key = NULL, "
+            "    file_name = NULL, updated_at = now()",
             (user_id, text),
         )
 
@@ -93,6 +100,31 @@ def get_resume(conn, user_id: int) -> Optional[str]:
         cur.execute("SELECT text FROM resumes WHERE user_id = %s", (user_id,))
         row = cur.fetchone()
         return row[0] if row else None
+
+
+def get_resume_row(conn, user_id: int) -> Optional[dict]:
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            "SELECT text, parsed_json, file_key, file_name, updated_at "
+            "FROM resumes WHERE user_id = %s",
+            (user_id,),
+        )
+        return cur.fetchone()
+
+
+def upsert_resume_file(conn, user_id: int, *, text: str, parsed: Optional[dict],
+                       file_key: str, file_name: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO resumes (user_id, text, parsed_json, file_key, file_name) "
+            "VALUES (%s, %s, %s, %s, %s) "
+            "ON CONFLICT (user_id) DO UPDATE "
+            "SET text = EXCLUDED.text, parsed_json = EXCLUDED.parsed_json, "
+            "    file_key = EXCLUDED.file_key, file_name = EXCLUDED.file_name, "
+            "    updated_at = now()",
+            (user_id, text, Json(parsed) if parsed is not None else None,
+             file_key, file_name),
+        )
 
 
 def upsert_jd(conn, app_id: int, user_id: int, text: str) -> None:

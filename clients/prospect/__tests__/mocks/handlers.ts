@@ -69,7 +69,31 @@ export const handlers = [
       requirements: ['Python', 'Postgres'], ok: true,
     }),
   ),
-  http.get(`${AGENT}/ai/resume`, () => HttpResponse.json({ text: 'my stored résumé' })),
+  http.get(`${AGENT}/ai/resume`, () =>
+    HttpResponse.json({
+      text: 'my stored résumé', profile: null,
+      file_name: null, updated_at: null,
+    }),
+  ),
+  http.post(`${AGENT}/ai/resume/upload-url`, () =>
+    HttpResponse.json({ key: 'resumes/1/abc.pdf', url: 'https://bucket.test/abc.pdf?sig=x' }),
+  ),
+  http.put('https://bucket.test/abc.pdf', () => new HttpResponse(null, { status: 200 })),
+  http.post(`${AGENT}/ai/resume/ingest`, () =>
+    HttpResponse.json({
+      text: 'JANE CHEN\nSenior Engineer',
+      profile: {
+        name: 'Jane Chen', email: 'jane@example.com', phone: null,
+        location: 'Sydney', links: [], skills: ['Python', 'Postgres'],
+        experience: [{
+          company: 'Acme Corp', title: 'Senior Engineer',
+          start: '2023', end: '2026', bullets: ['Built the billing pipeline.'],
+        }],
+        education: [{ school: 'UNSW', degree: 'BSc Computer Science', year: '2022' }],
+      },
+      warning: null,
+    }),
+  ),
   http.put(`${AGENT}/ai/resume`, () => HttpResponse.json({ ok: true })),
   http.put(`${AGENT}/ai/apps/:appId/jd`, () => HttpResponse.json({ ok: true })),
   http.post(`${AGENT}/ai/match/:appId`, () =>

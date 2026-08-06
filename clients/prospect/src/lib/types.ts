@@ -89,6 +89,44 @@ export interface MatchResult {
   suggestions: string[]
 }
 
+export interface ResumeExperience {
+  company: string
+  title: string
+  start: string | null
+  end: string | null
+  bullets: string[]
+}
+
+export interface ResumeEducation {
+  school: string
+  degree: string
+  year: string | null
+}
+
+export interface ResumeProfile {
+  name: string
+  email: string | null
+  phone: string | null
+  location: string | null
+  links: string[]
+  skills: string[]
+  experience: ResumeExperience[]
+  education: ResumeEducation[]
+}
+
+export interface StoredResume {
+  text: string
+  profile: ResumeProfile | null
+  file_name: string | null
+  updated_at: string | null
+}
+
+export interface ResumeIngestResult {
+  text: string
+  profile: ResumeProfile | null
+  warning: string | null
+}
+
 export type RecommendationStatus = 'pending' | 'accepted' | 'dismissed'
 
 export interface Recommendation {
