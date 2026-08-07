@@ -76,7 +76,9 @@ def run_jobs_batch(conn, *, sources, user_id: int) -> list[int]:
                 company=company,
                 role=role,
                 location=posting.location,
-                url=posting.url,          # always the source's — never composed
+                # Source-derived, never LLM-derived. Not always verbatim: see
+                # JobPosting's docstring for LinkedIn's composed-URL fallback.
+                url=posting.url,
                 raw_snippet=snippet,
             )
             if rid is None:               # UNIQUE race — inserted elsewhere

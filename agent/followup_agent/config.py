@@ -48,7 +48,14 @@ class Settings:
     jobs_sources_path: str = ""
     jobs_poll_hours: int = 12
     jobs_user_agent: str = ""
+    # Postings kept per source per run. In practice this governs Greenhouse and
+    # Lever: LinkedInSource.discover() deliberately fetches one page (10
+    # results) per search, so it cannot reach a cap of 25.
     jobs_max_per_source: int = 25
+    # LinkedIn only, and a SOFT cap. LinkedInClient.get() checks it once on
+    # entry and increments it per network attempt, so a call that starts under
+    # budget can still spend its full retry ladder: at 10 the worst case is
+    # nine single-attempt calls plus a tenth that retries 7 times, ~16 attempts.
     jobs_max_requests_per_run: int = 10
     # S3-compatible object storage for uploaded résumé PDFs. Defaults are
     # empty so the agent boots without a bucket; upload endpoints return 503

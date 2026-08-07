@@ -19,8 +19,15 @@ class JobPosting:
 
     A plain dataclass rather than a pydantic model because no LLM touches this
     path — all three sources return structured data, so there is nothing to
-    validate against a hallucination and no injection surface. `url` always
-    comes from the source; it is never composed from an id.
+    validate against a hallucination and no injection surface.
+
+    `url` therefore never originates from an LLM, which is the property that
+    matters. It is not, however, always verbatim from the source: Greenhouse and
+    Lever always supply one, but LinkedIn's parser falls back to composing
+    `https://www.linkedin.com/jobs/view/{job_id}` when a card carries no link
+    element (see parse_job_cards). The id it composes from is the job-posting
+    URN read off that same card, so the URL is still derived from the source's
+    own data — just assembled rather than copied.
     """
     uid: str                        # "linkedin:4426311357"
     company: str

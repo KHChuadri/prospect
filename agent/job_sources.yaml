@@ -3,14 +3,21 @@
 # type: linkedin    — LinkedIn's public jobs-guest endpoints. REQUIRES query
 #                     and location. See the robots.txt warning in
 #                     jobs/sources/linkedin.py before enabling more of these.
+#                     Each linkedin source deliberately fetches ONE page — 10
+#                     results per search, per run. JOBS_MAX_PER_SOURCE (25) is
+#                     therefore unreachable here; it governs the two below.
+#                     Want more LinkedIn results? Add another search, with the
+#                     robots.txt warning in mind. Don't reach for the cap.
 # type: greenhouse  — a company's Greenhouse board. REQUIRES slug: the name in
 #                     boards.greenhouse.io/<slug>.
 # type: lever       — a company's Lever board. REQUIRES slug: the name in
 #                     jobs.lever.co/<slug>.
 #
 # enabled: false keeps a source installed but sits it out. A missing key means
-# enabled. Disabled sources are printed at load so a skipped source never looks
-# like a source that found nothing.
+# enabled. The quoted forms "false"/"no"/"off" count as disabled too, so a
+# stray pair of quotes cannot silently leave a source running. Disabled sources
+# are printed at load so a skipped source never looks like one that found
+# nothing.
 #
 # company: optional. Greenhouse and Lever return only the board slug, so the
 # crawler title-cases it. Set this where that guess reads badly.
@@ -30,8 +37,9 @@ sources:
 
   # Two robots-clean boards, enabled, so the first run of a fresh checkout does
   # not exercise the ToS-violating LinkedIn source alone. Both slugs are real
-  # and return job JSON today; a board that goes away 404s, which the crawler
-  # already treats as "nothing this run".
+  # and return job JSON today. If a board is renamed or withdrawn the API 404s,
+  # Fetcher raises FetchError, and run_jobs_batch's per-source isolation logs it
+  # and moves on — a stale slug here costs one log line, not the run.
   - name: greenhouse-databricks
     type: greenhouse
     slug: databricks

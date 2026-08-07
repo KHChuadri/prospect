@@ -6,9 +6,16 @@ markup is shallow and stable, and splitting on the job-posting URN lets one
 malformed card fail without taking the rest of the page with it.
 
 READ THIS BEFORE EDITING: LinkedIn's robots.txt is `Disallow: /` for all
-user-agents. This module is the ONLY place in the codebase that bypasses the
-robots check enforced by events/fetch.py. That exception is confined here on
-purpose — one file to audit, one file to delete. See docs/ARCHITECTURE.md.
+user-agents. This module is the only place in the codebase that fetches a path
+robots.txt actually disallows — it bypasses the robots check enforced by
+events/fetch.py. (It is not the only code that skips that check:
+events/sources/eventbrite.py also builds a bare httpx.Client and never calls
+Fetcher.allowed(). That one is benign — a token-authenticated call to the
+documented eventbriteapi.com REST API, which robots.txt does not disallow — so
+it is not this exception, but the distinction is worth stating rather than
+claiming a uniqueness this module does not have.) The exception is confined
+here on purpose — one file to audit, one file to delete. See
+docs/ARCHITECTURE.md.
 """
 import random
 import re
@@ -251,6 +258,14 @@ class LinkedInClient:
             # next request — `cookies={}` only seeds an empty jar, it does not
             # disable one. Clearing after every response is what actually keeps
             # this client anonymous, and anonymity is the whole safety property.
+            #
+            # CAVEAT: this closes the gap BETWEEN get() calls, not within one.
+            # With follow_redirects=True, a Set-Cookie on a 3xx is already in
+            # the jar when httpx follows the redirect, so it is replayed on the
+            # next hop before this line runs — the authwall-redirect case is
+            # exactly where that happens. Narrowing it means turning redirects
+            # off (or clearing per-hop via an event hook), which is a behaviour
+            # change and needs its own review; recorded here, not fixed here.
             self._client.cookies.clear()
 
             if response.status_code == 429 or response.status_code >= 500:
@@ -304,6 +319,13 @@ class LinkedInSource:
         self._max_results = max_results
 
     def discover(self) -> list[JobPosting]:
+        # DELIBERATE: no `page` argument, so this always fetches page 1 — 10
+        # results per search, per run. Not an oversight and not a TODO. Ten
+        # results twice a day is an appropriately conservative volume against
+        # an endpoint that refuses automated access outright, and
+        # jobs_max_per_source (default 25) is therefore unreachable here; that
+        # cap governs Greenhouse and Lever. build_search_url still takes `page`
+        # and is tested for it — the knob exists, it is just not turned.
         html = self._client.get(build_search_url(
             query=self._query, location=self._location,
             jobage=self._jobage, remote=self._remote))
