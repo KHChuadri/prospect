@@ -131,6 +131,17 @@ def test_lever_empty_payload():
     assert lever.parse_jobs([], "p", "P") == []
 
 
+def test_lever_created_at_bool_true_is_not_a_timestamp():
+    # bool is a subclass of int, so isinstance(True, int) is True — the
+    # numeric guard must exclude bool explicitly or this silently parses
+    # as epoch 0 ("1970-01-01") instead of being rejected.
+    assert lever._iso_date(True) is None
+
+
+def test_lever_created_at_bool_false_is_not_a_timestamp():
+    assert lever._iso_date(False) is None
+
+
 def test_lever_source_builds_the_postings_url():
     f = FakeFetcher(json.dumps(LEVER_PAYLOAD))
     lever.LeverSource(LEVER_CFG, f).discover()

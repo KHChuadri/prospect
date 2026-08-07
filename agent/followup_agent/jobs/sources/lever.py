@@ -13,7 +13,10 @@ API = "https://api.lever.co/v0/postings/{slug}?mode=json"
 
 def _iso_date(created_at) -> Optional[str]:
     """Lever's createdAt is epoch milliseconds."""
-    if not isinstance(created_at, (int, float)):
+    # bool is a subclass of int (isinstance(True, int) is True), so it must be
+    # excluded explicitly or a stray True/False would silently parse as an
+    # epoch timestamp instead of being rejected as non-numeric.
+    if isinstance(created_at, bool) or not isinstance(created_at, (int, float)):
         return None
     return datetime.fromtimestamp(created_at / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
 
