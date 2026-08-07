@@ -12,7 +12,7 @@ def _email(mid, subject="Backend Engineer at Acme"):
 
 def _setup(monkeypatch, *, seen=None, job_keys=None):
     monkeypatch.setattr(db, "get_sync_state", lambda conn, uid: None)
-    monkeypatch.setattr(db, "existing_message_ids", lambda conn: set(seen or set()))
+    monkeypatch.setattr(db, "existing_source_message_ids", lambda conn: set(seen or set()))
     monkeypatch.setattr(db, "existing_job_keys", lambda conn, uid: set(job_keys or set()))
     monkeypatch.setattr(db, "set_sync_state", lambda conn, uid, ts: None)
     created = []

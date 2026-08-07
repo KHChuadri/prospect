@@ -20,7 +20,7 @@ def test_create_list_and_dedup_message_id(conn):
 
     rows = db.list_recommendations(conn, 1, "pending")
     assert len(rows) == 1 and rows[0]["company"] == "Acme"
-    assert db.existing_message_ids(conn) == {"m1"}
+    assert db.existing_source_message_ids(conn) == {"m1"}
 
 
 def test_existing_job_keys_includes_pending_recs(conn):

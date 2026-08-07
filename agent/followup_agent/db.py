@@ -165,7 +165,13 @@ def save_optimized(conn, app_id: int, user_id: int, text: str) -> None:
         )
 
 
-def existing_message_ids(conn) -> set[str]:
+def existing_source_message_ids(conn) -> set[str]:
+    """Gate 1's lookup — every recommendation key already stored.
+
+    Deliberately unfiltered by status: a dismissed posting must stay dismissed,
+    and filtering to 'pending' here would re-insert everything the user has
+    already rejected on the next crawl.
+    """
     with conn.cursor() as cur:
         cur.execute("SELECT source_message_id FROM recommendations")
         return {r[0] for r in cur.fetchall()}
@@ -259,18 +265,6 @@ def existing_source_uids(conn) -> set[tuple[str, str]]:
     with conn.cursor() as cur:
         cur.execute("SELECT source_name, source_uid FROM events")
         return {(r[0], r[1]) for r in cur.fetchall()}
-
-
-def existing_source_message_ids(conn) -> set[str]:
-    """Gate 1's lookup — every recommendation key already stored.
-
-    Deliberately unfiltered by status: a dismissed posting must stay dismissed,
-    and filtering to 'pending' here would re-insert everything the user has
-    already rejected on the next crawl.
-    """
-    with conn.cursor() as cur:
-        cur.execute("SELECT source_message_id FROM recommendations")
-        return {r[0] for r in cur.fetchall()}
 
 
 def create_event(conn, *, source_name, source_uid, url, title, description,
