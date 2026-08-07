@@ -65,7 +65,14 @@ def run_jobs_batch(conn, *, sources, user_id: int) -> list[int]:
                 conn,
                 user_id=user_id,
                 source_message_id=posting.uid,
-                source_sender=source.name,
+                # display_name, not name: the frontend copies this into the
+                # created JobApplication.source, so a config identifier would be
+                # recorded on the board permanently and renaming a search in the
+                # YAML would orphan its historical applications. Attribute access
+                # is deliberate — a getattr() fallback would hide a source class
+                # that forgot it. The contract is .name, .display_name,
+                # .discover().
+                source_sender=source.display_name,
                 company=company,
                 role=role,
                 location=posting.location,

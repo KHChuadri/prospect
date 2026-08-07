@@ -289,6 +289,11 @@ _PARSE_FAILURE_THRESHOLD = 500
 class LinkedInSource:
     """One saved search against the LinkedIn guest job board."""
 
+    # Shown on the Recommendations card and copied into JobApplication.source
+    # when the posting is accepted, so it must read as a board name rather than
+    # as the YAML key. `name` stays the config identifier used in logs.
+    display_name = "LinkedIn"
+
     def __init__(self, cfg: dict, client: "LinkedInClient", max_results: int = 25):
         self.name = cfg["name"]
         self._query = cfg.get("query")

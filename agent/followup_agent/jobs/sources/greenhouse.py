@@ -39,6 +39,9 @@ class GreenhouseSource:
         self._slug = cfg["slug"]
         # Greenhouse does not return the company name, only the board slug.
         self._company = cfg.get("company") or self._slug.replace("-", " ").title()
+        # Board name, not the YAML key: this is copied into
+        # JobApplication.source, so renaming a search must not orphan history.
+        self.display_name = f"Greenhouse · {self._company}"
         self._fetcher = fetcher
         self._max_results = max_results
 

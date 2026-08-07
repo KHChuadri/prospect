@@ -6,8 +6,13 @@ from followup_agent.jobs.sources import JobPosting
 
 
 class FakeSource:
-    def __init__(self, name, postings, raises=None):
+    """The source contract: .name, .display_name, .discover()."""
+
+    def __init__(self, name, postings, raises=None, display_name=None):
         self.name = name
+        # Defaulted from `name` only so the existing gate tests stay readable;
+        # the tests that care about the distinction pass both explicitly.
+        self.display_name = display_name or name
         self._postings = postings
         self._raises = raises
 
@@ -47,6 +52,56 @@ def test_stores_a_new_posting(monkeypatch):
     assert created[0]["company"] == "Canva"
     assert created[0]["source_sender"] == "linkedin-syd"
     assert created[0]["url"] == "https://ex.test/linkedin:1"
+
+
+def test_source_sender_is_the_display_name_not_the_config_name(monkeypatch):
+    created = _setup(monkeypatch)
+    # The frontend copies source_sender into the created JobApplication.source,
+    # so the config identifier would be recorded on the board permanently and
+    # renaming the YAML key would orphan its history.
+    src = FakeSource("greenhouse-canva", [_jp("greenhouse:canva:1")],
+                     display_name="Greenhouse · Canva")
+    crawl.run_jobs_batch(None, sources=[src], user_id=1)
+    assert created[0]["source_sender"] == "Greenhouse · Canva"
+
+
+def test_a_source_without_a_display_name_fails_loudly(monkeypatch):
+    created = _setup(monkeypatch)
+
+    class NoDisplayName:
+        name = "half-built"
+
+        def discover(self):
+            return [_jp("linkedin:1")]
+
+    # display_name is part of the contract, not a nicety. A
+    # getattr(source, "display_name", source.name) fallback would silently store
+    # the config name for a source class that forgot it, and nothing downstream
+    # would ever reveal the mistake.
+    with pytest.raises(AttributeError, match="display_name"):
+        crawl.run_jobs_batch(None, sources=[NoDisplayName()], user_id=1)
+    assert created == []
+
+
+def test_every_real_source_class_carries_a_display_name():
+    # The contract is only worth having if all three implementations honour it.
+    from followup_agent.jobs.sources.greenhouse import GreenhouseSource
+    from followup_agent.jobs.sources.lever import LeverSource
+    from followup_agent.jobs.sources.linkedin import LinkedInSource
+
+    li = LinkedInSource({"name": "linkedin-syd", "location": "Sydney"},
+                        client=object())
+    gh = GreenhouseSource({"name": "greenhouse-stripe", "slug": "stripe"},
+                          fetcher=object())
+    lv = LeverSource({"name": "lever-palantir", "slug": "palantir"},
+                     fetcher=object())
+    assert li.display_name == "LinkedIn"
+    assert gh.display_name == "Greenhouse · Stripe"
+    assert lv.display_name == "Lever · Palantir"
+    # company: overrides the title-cased slug, and the display name follows it.
+    assert GreenhouseSource(
+        {"name": "gh", "slug": "dbx", "company": "Databricks"},
+        fetcher=object()).display_name == "Greenhouse · Databricks"
 
 
 def test_raw_snippet_carries_location_and_date(monkeypatch):

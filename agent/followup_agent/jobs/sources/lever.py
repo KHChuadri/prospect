@@ -45,6 +45,9 @@ class LeverSource:
         self.name = cfg["name"]
         self._slug = cfg["slug"]
         self._company = cfg.get("company") or self._slug.replace("-", " ").title()
+        # Board name, not the YAML key: this is copied into
+        # JobApplication.source, so renaming a search must not orphan history.
+        self.display_name = f"Lever · {self._company}"
         self._fetcher = fetcher
         self._max_results = max_results
 
