@@ -17,3 +17,10 @@ def test_start_nightly_registers_daily_cron():
     assert trigger == "cron"
     assert kw.get("hour") == 9
     assert kw.get("minute") == 0
+
+
+def test_start_hours_registers_an_interval_job():
+    s = FakeScheduler()
+    job = lambda: None
+    scheduler.start_hours(s, job, 12)
+    assert s.jobs == [(job, "interval", {"hours": 12})]
