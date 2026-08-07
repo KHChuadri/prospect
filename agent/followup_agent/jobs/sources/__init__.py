@@ -30,11 +30,36 @@ class JobPosting:
     posted_at: Optional[str] = None
 
 
+_DISABLED_WORDS = frozenset({"false", "no", "off"})
+
+
+def _is_disabled(value) -> bool:
+    """Is this `enabled:` value a request to sit the source out?
+
+    A bare `is False` would miss the quoted forms. YAML gives `enabled: "false"`
+    as the STRING "false", which is truthy in Python — so a stray pair of quotes
+    used to leave the source running and print no "disabled" line. That matters
+    beyond tidiness: ARCHITECTURE.md names this toggle as the way to switch off
+    the ToS-violating LinkedIn source in a shared deployment, so a quoting typo
+    silently re-enabled it with nothing in the log to reveal the mistake.
+
+    Only the explicit negative words disable. Anything else — including a
+    missing key, a truthy string, or a number — leaves the source enabled, so
+    this cannot accidentally switch a source off.
+    """
+    if isinstance(value, bool):
+        return value is False
+    if isinstance(value, str):
+        return value.strip().lower() in _DISABLED_WORDS
+    return False
+
+
 def load_search_configs(path: Union[str, Path]) -> list[dict]:
     """Read job_sources.yaml, validate, and drop disabled sources.
 
     A source is enabled unless it sets `enabled: false` — a missing key means
-    enabled. Disabled sources are printed rather than silently dropped: a
+    enabled, and the quoted string forms ("false"/"no"/"off", any case) count as
+    disabled too. Disabled sources are printed rather than silently dropped: a
     skipped source and a source that found nothing look identical in the log
     otherwise.
     """
@@ -55,7 +80,7 @@ def load_search_configs(path: Union[str, Path]) -> list[dict]:
         if missing:
             raise ValueError(
                 f"source {cfg.get('name', '<unnamed>')} is missing: {', '.join(missing)}")
-        if cfg.get("enabled", True) is False:
+        if _is_disabled(cfg.get("enabled", True)):
             print(f"[jobs] {cfg['name']}: disabled — skipping")
             continue
         out.append(cfg)

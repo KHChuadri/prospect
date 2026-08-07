@@ -83,6 +83,36 @@ def test_disabled_source_is_dropped_and_reported(tmp_path, capsys):
     assert "lever-palantir" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("literal", ['"false"', '"False"', '"NO"', "'off'"])
+def test_quoted_enabled_string_still_disables(tmp_path, capsys, literal):
+    # YAML hands back the STRING "false" here, which is truthy in Python, so a
+    # bare `is False` left the source running. ARCHITECTURE.md names this toggle
+    # as the way to switch off the ToS-violating LinkedIn source in a shared
+    # deployment — a quoting typo must not silently re-enable it.
+    p = _write(tmp_path,
+        "sources:\n"
+        "  - name: linkedin-syd\n"
+        "    type: linkedin\n"
+        "    query: engineer\n"
+        "    location: Sydney\n"
+        f"    enabled: {literal}\n")
+    assert load_search_configs(p) == []
+    assert "disabled" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("literal", ['"true"', "true", '"yes"', '"falsey"'])
+def test_values_that_are_not_negatives_stay_enabled(tmp_path, literal):
+    # The matching must be narrow. Only the explicit negative words disable, so
+    # a truthy or unrelated value can never accidentally switch a source off.
+    p = _write(tmp_path,
+        "sources:\n"
+        "  - name: greenhouse-stripe\n"
+        "    type: greenhouse\n"
+        "    slug: stripe\n"
+        f"    enabled: {literal}\n")
+    assert [c["name"] for c in load_search_configs(p)] == ["greenhouse-stripe"]
+
+
 def test_missing_enabled_key_means_enabled(tmp_path):
     p = _write(tmp_path,
         "sources:\n"
