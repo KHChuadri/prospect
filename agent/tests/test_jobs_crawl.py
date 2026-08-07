@@ -120,3 +120,38 @@ def test_same_uid_twice_in_one_run_stores_once(monkeypatch):
     src = FakeSource("s", [_jp("linkedin:1"), _jp("linkedin:1")])
     assert crawl.run_jobs_batch(None, sources=[src], user_id=1) == [1]
     assert len(created) == 1
+
+
+def test_malformed_posting_does_not_stop_its_source(monkeypatch):
+    created = _setup(monkeypatch)
+    bad = JobPosting(uid="linkedin:bad", company=123, role="Frontend Engineer",
+                      url="https://ex.test/bad")
+    good = _jp("linkedin:2")
+    src = FakeSource("linkedin-syd", [bad, good])
+    ids = crawl.run_jobs_batch(None, sources=[src], user_id=1)
+    assert ids == [1]
+    assert len(created) == 1
+    assert created[0]["source_message_id"] == "linkedin:2"
+
+
+def test_malformed_posting_does_not_stop_the_run(monkeypatch):
+    created = _setup(monkeypatch)
+    bad = JobPosting(uid="linkedin:bad", company=123, role="Frontend Engineer",
+                      url="https://ex.test/bad")
+    a = FakeSource("linkedin-syd", [bad])
+    b = FakeSource("greenhouse-canva", [_jp("greenhouse:canva:9")])
+    ids = crawl.run_jobs_batch(None, sources=[a, b], user_id=1)
+    assert ids == [1]
+    assert len(created) == 1
+    assert created[0]["source_message_id"] == "greenhouse:canva:9"
+
+
+def test_malformed_posting_failure_is_reported(monkeypatch, capsys):
+    _setup(monkeypatch)
+    bad = JobPosting(uid="linkedin:bad", company=123, role="Frontend Engineer",
+                      url="https://ex.test/bad")
+    src = FakeSource("linkedin-syd", [bad])
+    crawl.run_jobs_batch(None, sources=[src], user_id=1)
+    out = capsys.readouterr().out
+    assert "linkedin-syd" in out
+    assert "linkedin:bad" in out
