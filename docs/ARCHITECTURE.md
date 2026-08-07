@@ -248,6 +248,7 @@ as "Monzo Bank".
 | **`url` never comes from the LLM** | `EventExtract` has no `url` field. A crawled page is text a stranger wrote; a page instructing the model to emit a phishing link has nowhere to put it. The stored URL is always the one the crawler fetched. |
 | **Local times converted via `zoneinfo`** | Pages print local times with no offset; `starts_at` is `TIMESTAMPTZ`. Storing naive Sydney time shows a 6:30pm event at 4:30am the next day — and passes tests while doing it. |
 | **Politeness is mandatory** | robots.txt, honest UA with a contact URL, one request per host ~2s apart, 25-page cap that logs when it truncates. Three sites twice a day is ~40 requests; these rules cost nothing and are the difference between welcome and IP-blocked. |
+| **One documented exception to the robots rule** | LinkedIn's `robots.txt` is `Disallow: /` for every user-agent, so the job crawler's LinkedIn source cannot go through `Fetcher`. It is the only code in the repo that skips the robots check above, confined to `jobs/sources/linkedin.py` — one file to audit, one file to delete. Its guest endpoints expect browser XHR headers, so the honest-UA rule can't apply either; `LinkedInClient` sends a Chrome UA instead. What compensates: a per-run request budget (`JOBS_MAX_REQUESTS_PER_RUN`, default 10), requests spaced 2s apart, and a circuit breaker that doubles its skip-length on every refusal — 1 run, then 2, then 4, capped at 16 — instead of retrying a refused endpoint forever. This is ToS-violating personal use; disable it (`enabled: false` in `job_sources.yaml`) in any shared deployment. Greenhouse and Lever carry no such exception — both go through `Fetcher` unchanged. |
 | **Failure isolation at two levels** | One dead site must not stop other sources; one bad page must not stop other events in that source. Errors are recorded to `events_crawl_state`, not swallowed. |
 | **Filtering at read time, not crawl time** | The "My companies" filter runs in the browser over already-stored events, so a filter can never silently lose an event and changing your mind costs no re-crawl. |
 | **One uvicorn worker** | APScheduler runs in-process and the LangGraph checkpointer lives in memory. Multiple workers means duplicate nightly runs and duplicate crawls. To scale out, move triggers to external cron and run the API stateless. |
@@ -267,3 +268,11 @@ as "Monzo Bank".
   judge it by eye.
 - **No JS rendering.** `fetch.py` is plain HTTP. It is deliberately the single
   swap point for Playwright if a source ever needs a real browser.
+- **Job crawler is single-user.** Searches are deployment-wide YAML feeding one
+  `RECO_USER_ID`. The migration path — a global `job_postings` table with per-user
+  opinions in `user_job_postings`, mirroring `events`/`user_events` — is written up in
+  `docs/superpowers/specs/2026-08-07-job-crawler-design.md`.
+- **LinkedIn markup rot.** The LinkedIn source parses HTML with regex. A successful
+  response with a real body yielding zero cards is logged as a parse failure rather
+  than as zero results, so breakage is visible; it is not prevented. Greenhouse and
+  Lever have no equivalent failure mode.

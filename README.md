@@ -6,7 +6,8 @@ panels and careers fairs and flags the ones where a company you've applied to wi
 be present.
 
 - **`prospect-backend/`** — .NET 10 API. CRUD, auth, and **owner of every database table**.
-- **`agent/`** — Python agent. FastAPI + APScheduler + LangGraph. Follow-up drafting and the event crawler.
+- **`agent/`** — Python agent. FastAPI + APScheduler + LangGraph. Follow-up drafting,
+  the event crawler, and the job crawler that feeds Recommendations.
 - **`clients/prospect/`** — Next.js 16 frontend.
 
 Architecture and design rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
