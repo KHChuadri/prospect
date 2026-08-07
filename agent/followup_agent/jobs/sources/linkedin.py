@@ -10,9 +10,13 @@ user-agents. This module is the ONLY place in the codebase that bypasses the
 robots check enforced by events/fetch.py. That exception is confined here on
 purpose — one file to audit, one file to delete. See docs/ARCHITECTURE.md.
 """
+import random
 import re
+import time
 from typing import Optional
 from urllib.parse import urlencode
+
+import httpx
 
 SEARCH_URL = (
     "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
@@ -130,3 +134,131 @@ def parse_job_cards(html: str) -> list[dict]:
             "url": url or f"https://www.linkedin.com/jobs/view/{job_id}",
         })
     return results
+
+
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+_MAX_RETRIES = 6
+_INITIAL_DELAY = 0.5
+_MAX_DELAY = 8.0
+
+
+class LinkedInRefused(Exception):
+    """LinkedIn declined, or we declined to ask.
+
+    Raised for an exhausted retry budget, an open circuit breaker, or a
+    per-run request budget that is spent. All three are the same thing from
+    the crawler's point of view: this source contributes nothing this run.
+    """
+
+
+class LinkedInClient:
+    """HTTP for the LinkedIn guest endpoints, with the rails a scheduler needs.
+
+    The reference CLI has none of the budget, spacing or breaker logic below,
+    because a human types one command and reads the error. Unattended, a bare
+    retry loop would hammer a refused endpoint every 12 hours forever.
+
+    Deliberately NOT an events/fetch.py Fetcher: that class enforces
+    robots.txt, and LinkedIn's is `Disallow: /`. Confining the exception to
+    this class is the point.
+
+    State lives on the instance, so main.py constructs exactly one long-lived
+    client. An agent restart clears the cooldown — accepted, and consistent
+    with the single-worker in-process scheduler documented in ARCHITECTURE.md.
+    """
+
+    def __init__(self, *, max_requests: int = 10, delay_seconds: float = 2.0,
+                 timeout: float = 10.0, sleep_fn=time.sleep,
+                 client: Optional[httpx.Client] = None):
+        self._max_requests = max_requests
+        self._delay_seconds = delay_seconds
+        self._sleep = sleep_fn
+        self._client = client or httpx.Client(
+            timeout=httpx.Timeout(timeout, connect=timeout),
+            follow_redirects=True, cookies={})
+        self._requests_made = 0
+        self._last_request_at: Optional[float] = None
+        self._cooldown_runs = 0        # runs still to skip
+        self._cooldown_next = 1        # length of the next cooldown, in runs
+        self._skip_this_run = False    # was a cooldown active as this run began?
+
+    def begin_run(self) -> None:
+        """Reset the per-run budget and spend one run of any active cooldown.
+
+        The cooldown must still bite on the run in which it is spent — decide
+        `_skip_this_run` from the pre-decrement value so `get()` below sees a
+        run that started under cooldown as skipped, even though this call
+        immediately decrements the counter towards the cooldown's end.
+        """
+        self._requests_made = 0
+        self._skip_this_run = self._cooldown_runs > 0
+        if self._cooldown_runs > 0:
+            self._cooldown_runs -= 1
+
+    def _open_breaker(self) -> None:
+        self._cooldown_runs = self._cooldown_next
+        self._cooldown_next = min(self._cooldown_next * 2, 16)
+        print(f"[jobs] linkedin: refused — skipping the next "
+              f"{self._cooldown_runs} run(s)")
+
+    def _close_breaker(self) -> None:
+        self._cooldown_runs = 0
+        self._cooldown_next = 1
+
+    def _wait_turn(self) -> None:
+        """Space distinct get() calls apart. Retries are spaced by backoff."""
+        if self._last_request_at is not None:
+            remaining = self._delay_seconds - (time.monotonic() - self._last_request_at)
+            if remaining > 0:
+                self._sleep(remaining)
+
+    def get(self, url: str) -> str:
+        if self._skip_this_run:
+            raise LinkedInRefused(
+                f"cooling down — {self._cooldown_runs} run(s) remaining")
+        if self._requests_made >= self._max_requests:
+            raise LinkedInRefused(
+                f"per-run request budget of {self._max_requests} is spent")
+
+        # Once, before the first attempt. Calling this inside the retry loop
+        # would stack spacing sleeps on top of backoff sleeps.
+        self._wait_turn()
+
+        delay = _INITIAL_DELAY
+        for attempt in range(_MAX_RETRIES + 1):
+            self._requests_made += 1
+            response = self._client.get(url, headers={
+                "User-Agent": _UA,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "X-Requested-With": "XMLHttpRequest",
+            })
+            self._last_request_at = time.monotonic()
+            # httpx stores Set-Cookie in the client's jar and replays it on the
+            # next request — `cookies={}` only seeds an empty jar, it does not
+            # disable one. Clearing after every response is what actually keeps
+            # this client anonymous, and anonymity is the whole safety property.
+            self._client.cookies.clear()
+
+            if response.status_code == 429 or response.status_code >= 500:
+                if attempt == _MAX_RETRIES:
+                    self._open_breaker()
+                    raise LinkedInRefused(
+                        f"{response.status_code} after {_MAX_RETRIES} retries")
+                self._sleep(delay + random.uniform(0, 0.5))
+                delay = min(delay * 2, _MAX_DELAY)
+                continue
+
+            if response.status_code == 404:
+                self._close_breaker()
+                return ""
+            if response.status_code >= 400:
+                raise LinkedInRefused(
+                    f"{response.status_code} {response.reason_phrase}")
+
+            self._close_breaker()
+            return response.text
+
+        raise LinkedInRefused("request failed after max retries")
