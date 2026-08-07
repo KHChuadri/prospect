@@ -2,6 +2,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   useRecommendations,
   useAcceptRecommendation,
@@ -19,7 +20,8 @@ export default function RecommendationsPage() {
       <div>
         <h1 className="text-lg font-semibold">Recommendations</h1>
         <p className="text-sm text-muted-foreground">
-          Jobs parsed from your email alerts. Accept to add to your board, or dismiss.
+          Jobs from email alerts and the job crawler. Accept to add to your
+          board, or dismiss.
         </p>
       </div>
 
@@ -36,9 +38,9 @@ export default function RecommendationsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-sm text-muted-foreground">
-              {rec.location && <span>{rec.location} · </span>}
-              <span>from {rec.source_sender}</span>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {rec.location && <span>{rec.location}</span>}
+              <Badge variant="secondary">{rec.source_sender}</Badge>
             </div>
             {rec.url && (
               <a href={rec.url} target="_blank" rel="noreferrer"
