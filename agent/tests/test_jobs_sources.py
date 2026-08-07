@@ -1,5 +1,9 @@
+from pathlib import Path
+
 import pytest
 from followup_agent.jobs.sources import JobPosting, load_search_configs
+
+SHIPPED_YAML = Path(__file__).resolve().parents[1] / "job_sources.yaml"
 
 
 def _write(tmp_path, body):
@@ -222,3 +226,13 @@ def test_build_job_sources_propagates_max_results_cap(tmp_path):
     sources = build_job_sources(FakeSettings(str(p), jobs_max_per_source=7),
                                 fetcher=object(), linkedin_client=object())
     assert [s._max_results for s in sources] == [7, 7, 7]
+
+
+def test_shipped_yaml_enables_a_robots_clean_source():
+    # The first real run of a fresh checkout must not exercise the
+    # ToS-violating LinkedIn source alone. This is a property of the shipped
+    # config, so it is asserted against the shipped file, not a fixture.
+    cfgs = load_search_configs(SHIPPED_YAML)
+    types = {c["type"] for c in cfgs}
+    assert "greenhouse" in types
+    assert "lever" in types

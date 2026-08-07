@@ -28,7 +28,16 @@ sources:
     location: "Sydney, New South Wales, Australia"
     jobage: 14
 
-  - name: greenhouse-canva
+  # Two robots-clean boards, enabled, so the first run of a fresh checkout does
+  # not exercise the ToS-violating LinkedIn source alone. Both slugs are real
+  # and return job JSON today; a board that goes away 404s, which the crawler
+  # already treats as "nothing this run".
+  - name: greenhouse-databricks
     type: greenhouse
-    slug: canva
-    enabled: false        # replace the slug with a real board before enabling
+    slug: databricks
+    company: Databricks   # the title-cased slug reads the same, but be explicit
+
+  - name: lever-palantir
+    type: lever
+    slug: palantir
+    company: Palantir Technologies   # title-cased "palantir" loses the company
