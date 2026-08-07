@@ -20,7 +20,7 @@ export default function RecommendationsPage() {
       <div>
         <h1 className="text-lg font-semibold">Recommendations</h1>
         <p className="text-sm text-muted-foreground">
-          Jobs from email alerts and the job crawler. Accept to add to your
+          Jobs from your email alerts and the job crawler. Accept to add to your
           board, or dismiss.
         </p>
       </div>

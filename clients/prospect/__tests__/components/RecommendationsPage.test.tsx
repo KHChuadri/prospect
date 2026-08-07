@@ -76,7 +76,9 @@ test('shows empty state when there are no recommendations', async () => {
 
 test('shows the source as a badge', async () => {
   renderPage()
-  expect(await screen.findByText('jobs@acme.com')).toBeInTheDocument()
+  const sourceEl = await screen.findByText('jobs@acme.com')
+  expect(sourceEl).toBeInTheDocument()
+  expect(sourceEl).toHaveAttribute('data-slot', 'badge')
 })
 
 test('shows a crawler source name for crawled postings', async () => {
@@ -94,11 +96,14 @@ test('shows a crawler source name for crawled postings', async () => {
   )
 
   renderPage()
-  expect(await screen.findByText('linkedin-frontend-syd')).toBeInTheDocument()
+  const sourceEl = await screen.findByText('linkedin-frontend-syd')
+  expect(sourceEl).toBeInTheDocument()
+  expect(sourceEl).toHaveAttribute('data-slot', 'badge')
 })
 
-test('does not claim recommendations come only from email', async () => {
+test('mentions both email alerts and the job crawler as sources', async () => {
   renderPage()
   await screen.findByText('Acme Corp')
-  expect(screen.queryByText(/from your email alerts/i)).not.toBeInTheDocument()
+  expect(screen.getByText(/email alerts/i)).toBeInTheDocument()
+  expect(screen.getByText(/job crawler/i)).toBeInTheDocument()
 })
