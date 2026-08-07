@@ -102,6 +102,9 @@ def test_job_posting_defaults():
 from dataclasses import dataclass
 
 from followup_agent.jobs.sources import build_job_sources
+from followup_agent.jobs.sources.greenhouse import GreenhouseSource
+from followup_agent.jobs.sources.lever import LeverSource
+from followup_agent.jobs.sources.linkedin import LinkedInSource
 
 
 @dataclass
@@ -147,3 +150,45 @@ def test_build_job_sources_skips_disabled(tmp_path):
 def test_build_job_sources_missing_file_is_empty(tmp_path):
     assert build_job_sources(FakeSettings(str(tmp_path / "nope.yaml")),
                              fetcher=object(), linkedin_client=object()) == []
+
+
+def test_build_job_sources_uses_correct_class_per_type(tmp_path):
+    # Names alone don't prove dispatch: all three classes set
+    # self.name = cfg["name"] identically, so a name-only assertion passes
+    # even if the type -> class mapping is completely broken.
+    p = _write(tmp_path,
+        "sources:\n"
+        "  - name: linkedin-syd\n"
+        "    type: linkedin\n"
+        "    query: engineer\n"
+        "    location: Sydney\n"
+        "  - name: greenhouse-stripe\n"
+        "    type: greenhouse\n"
+        "    slug: stripe\n"
+        "  - name: lever-palantir\n"
+        "    type: lever\n"
+        "    slug: palantir\n")
+    sources = build_job_sources(FakeSettings(str(p)), fetcher=object(),
+                                linkedin_client=object())
+    assert [type(s) for s in sources] == [
+        LinkedInSource, GreenhouseSource, LeverSource]
+
+
+def test_build_job_sources_propagates_max_results_cap(tmp_path):
+    # 7 is deliberately non-default: each source class's own default is 25,
+    # so asserting 25 here would pass even if the setting were ignored.
+    p = _write(tmp_path,
+        "sources:\n"
+        "  - name: linkedin-syd\n"
+        "    type: linkedin\n"
+        "    query: engineer\n"
+        "    location: Sydney\n"
+        "  - name: greenhouse-stripe\n"
+        "    type: greenhouse\n"
+        "    slug: stripe\n"
+        "  - name: lever-palantir\n"
+        "    type: lever\n"
+        "    slug: palantir\n")
+    sources = build_job_sources(FakeSettings(str(p), jobs_max_per_source=7),
+                                fetcher=object(), linkedin_client=object())
+    assert [s._max_results for s in sources] == [7, 7, 7]
