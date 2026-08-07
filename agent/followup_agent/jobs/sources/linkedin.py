@@ -18,6 +18,8 @@ from urllib.parse import urlencode
 
 import httpx
 
+from followup_agent.jobs.sources import JobPosting
+
 SEARCH_URL = (
     "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 )
@@ -271,3 +273,56 @@ class LinkedInClient:
             return response.text
 
         raise LinkedInRefused("request failed after max retries")
+
+
+# Below this, an empty body is genuinely empty rather than markup we stopped
+# recognising. LinkedIn's zero-result response is a near-empty fragment.
+_PARSE_FAILURE_THRESHOLD = 500
+
+
+class LinkedInSource:
+    """One saved search against the LinkedIn guest job board."""
+
+    def __init__(self, cfg: dict, client: "LinkedInClient", max_results: int = 25):
+        self.name = cfg["name"]
+        self._query = cfg.get("query")
+        self._location = cfg["location"]
+        self._jobage = int(cfg.get("jobage") or 0)
+        self._remote = cfg.get("remote")
+        self._client = client
+        self._max_results = max_results
+
+    def discover(self) -> list[JobPosting]:
+        html = self._client.get(build_search_url(
+            query=self._query, location=self._location,
+            jobage=self._jobage, remote=self._remote))
+
+        cards = parse_job_cards(html)
+
+        # A real body that yields nothing means the markup moved, not that the
+        # search was empty. Without this the feed goes quiet and never says why.
+        if not cards and len(html) > _PARSE_FAILURE_THRESHOLD:
+            print(f"[jobs] {self.name}: parse failure — {len(html)} bytes, "
+                  f"0 cards recognised. LinkedIn markup has probably changed.")
+            return []
+
+        if len(cards) > self._max_results:
+            # Never truncate silently — a capped crawl must not look complete.
+            print(f"[jobs] {self.name}: {len(cards)} cards, cap of "
+                  f"{self._max_results} applied — "
+                  f"{len(cards) - self._max_results} skipped")
+            cards = cards[:self._max_results]
+
+        out: list[JobPosting] = []
+        for c in cards:
+            if not c["company"]:
+                continue
+            out.append(JobPosting(
+                uid=f"linkedin:{c['id']}",
+                company=c["company"],
+                role=c["title"],
+                url=c["url"],
+                location=c["location"],
+                posted_at=c["date"],
+            ))
+        return out
