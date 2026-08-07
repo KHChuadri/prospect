@@ -215,9 +215,18 @@ class LinkedInClient:
                 self._sleep(remaining)
 
     def get(self, url: str) -> str:
-        if self._skip_this_run:
+        # `_skip_this_run` alone only catches a cooldown that was already open
+        # when the run began. A breaker opened by an earlier get() call in
+        # THIS run (e.g. its retries were exhausted moments ago) leaves
+        # `_skip_this_run` False but `_cooldown_runs` freshly positive — check
+        # both, or a second get() in the same run walks straight past a
+        # breaker that just opened.
+        if self._skip_this_run or self._cooldown_runs > 0:
             raise LinkedInRefused(
-                f"cooling down — {self._cooldown_runs} run(s) remaining")
+                # `_cooldown_runs` is the post-decrement remainder; +1 counts
+                # this run too, so the first skipped run doesn't misreport
+                # "0 run(s) remaining" while it is actively being skipped.
+                f"cooling down — {self._cooldown_runs + 1} run(s) remaining")
         if self._requests_made >= self._max_requests:
             raise LinkedInRefused(
                 f"per-run request budget of {self._max_requests} is spent")

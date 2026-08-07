@@ -1,7 +1,8 @@
 import httpx
 import pytest
 
-from followup_agent.jobs.sources.linkedin import LinkedInClient, LinkedInRefused
+from followup_agent.jobs.sources.linkedin import (
+    LinkedInClient, LinkedInRefused, _MAX_RETRIES)
 
 
 def _client(handler, **kw):
@@ -178,3 +179,89 @@ def test_other_4xx_raises_without_retrying():
     with pytest.raises(LinkedInRefused):
         c.get(URL)
     assert calls["n"] == 1
+
+
+def test_breaker_opening_mid_run_stops_further_requests_same_run():
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(429)
+
+    c, _ = _client(handler)
+    with pytest.raises(LinkedInRefused):
+        c.get(URL)                       # exhausts retries, opens the breaker
+    assert calls["n"] == _MAX_RETRIES + 1
+
+    # Same run — no begin_run() in between. A second get() must be refused
+    # by the freshly-opened breaker without touching the network again.
+    with pytest.raises(LinkedInRefused, match="cooling down"):
+        c.get(URL)
+    assert calls["n"] == _MAX_RETRIES + 1
+
+
+def test_success_resets_the_cooldown_ladder():
+    state = {"fail": True}
+
+    def handler(request):
+        return httpx.Response(429) if state["fail"] else httpx.Response(200, text="ok")
+
+    c, _ = _client(handler)
+    with pytest.raises(LinkedInRefused):
+        c.get(URL)                       # opens breaker: cooldown = 1 run, ladder -> 2
+
+    c.begin_run()
+    with pytest.raises(LinkedInRefused, match="cooling down"):
+        c.get(URL)                       # spends the 1-run cooldown
+
+    state["fail"] = False
+    c.begin_run()
+    assert c.get(URL) == "ok"            # success must reset the ladder to 1, not leave it at 2
+
+    state["fail"] = True
+    c.begin_run()
+    with pytest.raises(LinkedInRefused):
+        c.get(URL)                       # refused again -> opens a fresh cooldown
+
+    state["fail"] = False
+    c.begin_run()
+    with pytest.raises(LinkedInRefused, match="cooling down"):
+        c.get(URL)                       # this run is skipped either way (cooldown >= 1)
+
+    c.begin_run()                        # if the ladder reset to 1, this run is allowed
+    assert c.get(URL) == "ok"            # through; if it stayed at 2, this would still raise
+
+
+def test_cooldown_caps_at_sixteen_runs():
+    c, _ = _client(lambda r: httpx.Response(429))
+
+    def next_real_attempt_after(expected_skips):
+        for _ in range(expected_skips):
+            c.begin_run()
+            with pytest.raises(LinkedInRefused, match="cooling down"):
+                c.get(URL)
+        c.begin_run()
+        with pytest.raises(LinkedInRefused) as exc_info:
+            c.get(URL)                   # the real attempt that must follow
+        assert "cooling down" not in str(exc_info.value)
+
+    c.begin_run()
+    with pytest.raises(LinkedInRefused):
+        c.get(URL)                       # first refusal: cooldown -> 1
+
+    for expected in (1, 2, 4, 8, 16, 16):  # doubles, then must stop growing at 16
+        next_real_attempt_after(expected)
+
+
+def test_retries_consume_the_request_budget():
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return (httpx.Response(429) if calls["n"] < 3
+                else httpx.Response(200, text="ok"))
+
+    c, _ = _client(handler, max_requests=3)
+    assert c.get(URL) == "ok"            # 3 network attempts inside ONE get() call
+    with pytest.raises(LinkedInRefused, match="budget"):
+        c.get(URL)                       # budget must already be spent
