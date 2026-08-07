@@ -181,6 +181,28 @@ def test_other_4xx_raises_without_retrying():
     assert calls["n"] == 1
 
 
+def test_403_opens_the_breaker_and_skips_the_next_run():
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(403)
+
+    c, _ = _client(handler)
+    with pytest.raises(LinkedInRefused, match="403"):
+        c.get(URL)                       # one attempt, no retries
+    assert calls["n"] == 1
+
+    # An anti-bot 403 is a refusal, not a blip. If the breaker stayed closed the
+    # scheduler would re-send the identical request in 12 hours, forever. The
+    # request count is the assertion that matters: an exception alone would also
+    # be raised by a breaker that never opened.
+    c.begin_run()
+    with pytest.raises(LinkedInRefused, match="cooling down"):
+        c.get(URL)
+    assert calls["n"] == 1                # zero further network attempts
+
+
 def test_breaker_opening_mid_run_stops_further_requests_same_run():
     calls = {"n": 0}
 

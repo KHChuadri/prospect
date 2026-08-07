@@ -266,6 +266,12 @@ class LinkedInClient:
                 self._close_breaker()
                 return ""
             if response.status_code >= 400:
+                # A non-retryable 4xx — 403 from the anti-bot layer above all —
+                # is a refusal, not a blip. Without opening the breaker here the
+                # scheduler would re-send the identical request every 12 hours,
+                # forever, to a service that has already said no. (999, the
+                # LinkedIn bot-block code, lands in the >= 500 branch above.)
+                self._open_breaker()
                 raise LinkedInRefused(
                     f"{response.status_code} {response.reason_phrase}")
 
