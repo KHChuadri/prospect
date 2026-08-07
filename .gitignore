@@ -11,3 +11,5 @@
 # code moves on, whereas docs/ARCHITECTURE.md and the commit history describe
 # what was actually built. Covers plans/ and specs/ and anything added later.
 docs/superpowers/
+
+**/.DS_Store

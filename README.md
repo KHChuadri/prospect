@@ -10,6 +10,7 @@ be present.
 - **`clients/prospect/`** — Next.js 16 frontend.
 
 Architecture and design rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+New to the agents? Start with [`docs/AGENTS-ONBOARDING.md`](docs/AGENTS-ONBOARDING.md).
 
 ---
 

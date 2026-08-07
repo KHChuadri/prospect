@@ -4,6 +4,10 @@ A job-application tracker with two autonomous agents bolted on: one drafts
 follow-up emails for stale applications, one crawls the web for career events.
 Everything ships as a single container.
 
+This document assumes you already know the shape of the system. If you don't,
+read [`AGENTS-ONBOARDING.md`](AGENTS-ONBOARDING.md) first — it teaches the agent
+service from scratch.
+
 ---
 
 ## 1. The whole system
