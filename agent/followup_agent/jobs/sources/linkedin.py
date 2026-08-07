@@ -29,7 +29,13 @@ def jobage_to_tpr(days: int) -> Optional[str]:
 
 
 def work_type_flag(mode: Optional[str]) -> Optional[str]:
-    """Workplace-type filter: on-site=1, remote=2, hybrid=3."""
+    """Workplace-type filter: on-site=1, remote=2, hybrid=3.
+
+    Deliberate deviation from the ported TS (`workTypeFlag` in helpers.ts),
+    which only lowercases: here `mode` comes from a hand-edited
+    job_sources.yaml rather than a CLI flag, so `.strip()` treats stray
+    whitespace as user intent instead of silently dropping the filter.
+    """
     return {"remote": "2", "hybrid": "3",
             "onsite": "1", "on-site": "1"}.get((mode or "").strip().lower())
 
