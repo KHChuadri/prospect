@@ -1,3 +1,5 @@
+import pytest
+
 from followup_agent import db
 from followup_agent.jobs import crawl
 from followup_agent.jobs.sources import JobPosting
@@ -155,3 +157,15 @@ def test_malformed_posting_failure_is_reported(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "linkedin-syd" in out
     assert "linkedin:bad" in out
+
+
+def test_db_error_on_create_propagates(monkeypatch):
+    _setup(monkeypatch)
+
+    def raising_create(conn, **kw):
+        raise RuntimeError("db exploded")
+
+    monkeypatch.setattr(db, "create_recommendation", raising_create)
+    src = FakeSource("s", [_jp("linkedin:1")])
+    with pytest.raises(RuntimeError, match="db exploded"):
+        crawl.run_jobs_batch(None, sources=[src], user_id=1)

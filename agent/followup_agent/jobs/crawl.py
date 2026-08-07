@@ -55,32 +55,33 @@ def run_jobs_batch(conn, *, sources, user_id: int) -> list[int]:
                     print(f"[jobs] {source.name}/{posting.uid}: already tracked {key}")
                     continue
 
-                rid = db.create_recommendation(
-                    conn,
-                    user_id=user_id,
-                    source_message_id=posting.uid,
-                    source_sender=source.name,
-                    company=company,
-                    role=role,
-                    location=posting.location,
-                    url=posting.url,      # always the source's — never composed
-                    raw_snippet=_snippet(posting),
-                )
-                if rid is None:           # UNIQUE race — inserted elsewhere
-                    continue
-
-                seen_ids.add(posting.uid)
-                # GATE 4 — the same role listed by two sources. Adding the key
-                # here rather than checking a separate set means one pass
-                # covers both cross-source duplicates and repeats within a
-                # single source.
-                job_keys.add(key)
-                created.append(rid)
-                print(f"[jobs] {source.name}/{posting.uid}: stored "
-                      f"{company} / {role} -> {rid}")
+                snippet = _snippet(posting)
             except Exception as e:
                 # A malformed posting must not abort its source.
                 print(f"[jobs] {source.name}/{posting.uid}: {e}")
                 continue
+
+            rid = db.create_recommendation(
+                conn,
+                user_id=user_id,
+                source_message_id=posting.uid,
+                source_sender=source.name,
+                company=company,
+                role=role,
+                location=posting.location,
+                url=posting.url,          # always the source's — never composed
+                raw_snippet=snippet,
+            )
+            if rid is None:               # UNIQUE race — inserted elsewhere
+                continue
+
+            seen_ids.add(posting.uid)
+            # GATE 4 — the same role listed by two sources. Adding the key here
+            # rather than checking a separate set means one pass covers both
+            # cross-source duplicates and repeats within a single source.
+            job_keys.add(key)
+            created.append(rid)
+            print(f"[jobs] {source.name}/{posting.uid}: stored "
+                  f"{company} / {role} -> {rid}")
 
     return created
