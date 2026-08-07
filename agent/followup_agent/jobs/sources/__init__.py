@@ -60,3 +60,27 @@ def load_search_configs(path: Union[str, Path]) -> list[dict]:
             continue
         out.append(cfg)
     return out
+
+
+def build_job_sources(settings, fetcher, linkedin_client) -> list:
+    """Construct source objects from job_sources.yaml.
+
+    Lives here rather than in main.py so crawl_jobs_now.py can call it without
+    importing main — importing main would start the scheduler and the API.
+    Source classes are imported lazily to avoid a circular import back into
+    this module.
+    """
+    from followup_agent.jobs.sources.greenhouse import GreenhouseSource
+    from followup_agent.jobs.sources.lever import LeverSource
+    from followup_agent.jobs.sources.linkedin import LinkedInSource
+
+    cap = settings.jobs_max_per_source
+    out = []
+    for cfg in load_search_configs(settings.jobs_sources_path):
+        if cfg["type"] == "linkedin":
+            out.append(LinkedInSource(cfg, linkedin_client, max_results=cap))
+        elif cfg["type"] == "greenhouse":
+            out.append(GreenhouseSource(cfg, fetcher, max_results=cap))
+        else:
+            out.append(LeverSource(cfg, fetcher, max_results=cap))
+    return out

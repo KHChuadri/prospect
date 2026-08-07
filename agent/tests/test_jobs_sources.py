@@ -97,3 +97,53 @@ def test_job_posting_defaults():
                     url="https://ex.test/1")
     assert jp.location is None
     assert jp.posted_at is None
+
+
+from dataclasses import dataclass
+
+from followup_agent.jobs.sources import build_job_sources
+
+
+@dataclass
+class FakeSettings:
+    jobs_sources_path: str
+    jobs_max_per_source: int = 25
+
+
+def test_build_job_sources_constructs_one_object_per_config(tmp_path):
+    p = _write(tmp_path,
+        "sources:\n"
+        "  - name: linkedin-syd\n"
+        "    type: linkedin\n"
+        "    query: engineer\n"
+        "    location: Sydney\n"
+        "  - name: greenhouse-stripe\n"
+        "    type: greenhouse\n"
+        "    slug: stripe\n"
+        "  - name: lever-palantir\n"
+        "    type: lever\n"
+        "    slug: palantir\n")
+    sources = build_job_sources(FakeSettings(str(p)), fetcher=object(),
+                                linkedin_client=object())
+    assert [s.name for s in sources] == [
+        "linkedin-syd", "greenhouse-stripe", "lever-palantir"]
+
+
+def test_build_job_sources_skips_disabled(tmp_path):
+    p = _write(tmp_path,
+        "sources:\n"
+        "  - name: greenhouse-stripe\n"
+        "    type: greenhouse\n"
+        "    slug: stripe\n"
+        "  - name: lever-palantir\n"
+        "    type: lever\n"
+        "    slug: palantir\n"
+        "    enabled: false\n")
+    sources = build_job_sources(FakeSettings(str(p)), fetcher=object(),
+                                linkedin_client=object())
+    assert [s.name for s in sources] == ["greenhouse-stripe"]
+
+
+def test_build_job_sources_missing_file_is_empty(tmp_path):
+    assert build_job_sources(FakeSettings(str(tmp_path / "nope.yaml")),
+                             fetcher=object(), linkedin_client=object()) == []

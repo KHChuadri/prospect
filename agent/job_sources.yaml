@@ -1,0 +1,34 @@
+# Job searches the crawler runs. Edit by hand.
+#
+# type: linkedin    — LinkedIn's public jobs-guest endpoints. REQUIRES query
+#                     and location. See the robots.txt warning in
+#                     jobs/sources/linkedin.py before enabling more of these.
+# type: greenhouse  — a company's Greenhouse board. REQUIRES slug: the name in
+#                     boards.greenhouse.io/<slug>.
+# type: lever       — a company's Lever board. REQUIRES slug: the name in
+#                     jobs.lever.co/<slug>.
+#
+# enabled: false keeps a source installed but sits it out. A missing key means
+# enabled. Disabled sources are printed at load so a skipped source never looks
+# like a source that found nothing.
+#
+# company: optional. Greenhouse and Lever return only the board slug, so the
+# crawler title-cases it. Set this where that guess reads badly.
+
+sources:
+  - name: linkedin-frontend-syd
+    type: linkedin
+    query: "frontend engineer"
+    location: "Sydney, New South Wales, Australia"
+    jobage: 14
+
+  - name: linkedin-ai-syd
+    type: linkedin
+    query: "AI engineer"
+    location: "Sydney, New South Wales, Australia"
+    jobage: 14
+
+  - name: greenhouse-canva
+    type: greenhouse
+    slug: canva
+    enabled: false        # replace the slug with a real board before enabling
