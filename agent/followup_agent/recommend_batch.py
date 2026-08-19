@@ -16,7 +16,7 @@ def run_reco_batch(
     since = db.get_sync_state(conn, user_id) or (now - timedelta(days=1))
     emails = gmail_fn(since)
 
-    seen = db.existing_message_ids(conn)
+    seen = db.existing_source_message_ids(conn)
     job_keys = db.existing_job_keys(conn, user_id)
     created: list[int] = []
     extract_failed = False

@@ -49,7 +49,7 @@ the ASP.NET backend.
 |---------------|----------------|
 | `main.py`     | Process entrypoint. Wires Postgres checkpointer, builds the graph, mounts FastAPI, starts the nightly scheduler. |
 | `config.py`   | Loads `Settings` from `agent/.env` (auto-loaded at import). Provider-agnostic LLM config. |
-| `scheduler.py`| Registers the nightly cron job (09:00). |
+| `scheduler.py`| Registers the four scheduled jobs: nightly cron (09:00), recommendations (interval, minutes), events and jobs (interval, hours). |
 | `batch.py`    | Per-run: fetch candidate apps, filter via `rules`, invoke the graph per eligible app, persist drafts. Resilient — one flaky LLM call is logged and skipped, batch continues. |
 | `rules.py`    | Pure eligibility logic: status in {Applied, Screening}, age ≥ N days, no existing follow-up. |
 | `graph.py`    | LangGraph state machine: `assess → human_review (interrupt) → send`. Side effects injected via `assess_fn` / `send_fn`. |
@@ -93,6 +93,56 @@ the wrong day and passes tests while doing it.
 URL is always the one the crawler fetched. A crawled page is untrusted text, and
 this is what stops a malicious page injecting a link into the feed.
 
+## Job crawler
+
+Searches job boards and writes what it finds into the same `recommendations`
+table the Gmail poller feeds, so postings surface on the existing Recommendations
+page. Shares the agent's scheduler and Postgres connection. **No LLM call
+anywhere** — all three sources return structured data already.
+
+| Module | Responsibility |
+|---|---|
+| `jobs/sources/__init__.py` | `JobPosting` dataclass; YAML loader with per-type key validation and the `enabled:` toggle; `build_job_sources` factory. |
+| `jobs/sources/linkedin.py` | LinkedIn's public `jobs-guest` endpoints; regex card parsing. `LinkedInClient` owns the per-run request budget, 2s spacing, backoff ladder and circuit breaker. **The one robots.txt exception.** |
+| `jobs/sources/greenhouse.py` | A company's Greenhouse board via its documented JSON API. Goes through `Fetcher` unchanged. |
+| `jobs/sources/lever.py` | A company's Lever board via its documented JSON API. Goes through `Fetcher` unchanged. |
+| `jobs/crawl.py` | Orchestration: four gates, per-source and per-posting failure isolation. |
+
+Configured by `agent/job_sources.yaml`. Run manually with `python crawl_jobs_now.py`.
+
+**Zero new tables.** A posting is a `recommendations` row, keyed by a namespaced
+`source_message_id` (`linkedin:4426311357`). That column already had the UNIQUE
+constraint the crawler needs for an idempotent write, and the Recommendations UI
+already knew how to render accept/dismiss cards, so the feature added no
+migration. `source_sender` carries a **display name** (`Greenhouse · Databricks`),
+not the config identifier — the frontend copies that field into the created
+`JobApplication.source`, so renaming a search in the YAML would otherwise orphan
+its historical applications.
+
+**Four gates**, ordered so the cheap ones run first, exactly as in the event
+crawler: already stored → usable company and role → already on the board or
+awaiting a decision → the same role from a second source. Gate 1 runs before any
+per-posting work, which is what makes re-reading the same search nearly free.
+
+**No sync cursor**, for the same reason the event crawler has none: search
+results show what is current, so the crawler re-reads them every run and Gate 1
+absorbs the repeats.
+
+**No LLM means no injection surface.** `JobPosting` is a plain dataclass rather
+than a pydantic model because nothing on this path is model output — there is no
+hallucination to validate against and no prompt to inject into. `url` is always
+source-derived (LinkedIn composes it from the job URN when a card carries no link
+element; Greenhouse and Lever always supply one).
+
+**LinkedIn is the documented robots.txt exception.** LinkedIn's `robots.txt` is
+`Disallow: /` for every user-agent, so that source cannot go through `Fetcher`
+and sends browser headers instead. What compensates: a soft per-run request
+budget, 2s spacing, and a circuit breaker that doubles its skip length (1, 2, 4,
+capped at 16 runs) on refusal — an exhausted 429/5xx ladder *or* a non-retryable
+4xx such as 403. ToS-violating personal use: set `enabled: false` in
+`job_sources.yaml` for any shared deployment. See
+[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §6 for the full rationale.
+
 ## Flow
 
 1. **Nightly (09:00)** — `batch.run_batch` reads `"JobApplications"`, filters with
@@ -135,7 +185,7 @@ so its drafting + approval is one durable, resumable conversation.
   send.
 - **Run a single worker.** APScheduler runs in-process and the graph/checkpointer
   live in memory, so the agent must run with **one** uvicorn worker. Multiple
-  workers would start multiple schedulers (duplicate nightly runs and duplicate
-  event crawls) and split
-  state. To scale out, move the nightly trigger to an external cron driving
-  `draft_now.py` and run the API stateless.
+  workers would start multiple schedulers (duplicate nightly runs, duplicate
+  event crawls and duplicate job crawls) and split
+  state. To scale out, move the triggers to an external cron driving
+  `draft_now.py` / `crawl_now.py` / `crawl_jobs_now.py` and run the API stateless.

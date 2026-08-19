@@ -1,15 +1,18 @@
 # Prospect
 
-A job-application tracker with two agents attached: one drafts follow-up emails for
-applications that have gone quiet, the other crawls the web for networking events,
-panels and careers fairs and flags the ones where a company you've applied to will
-be present.
+A job-application tracker with four background agents attached: one drafts follow-up
+emails for applications that have gone quiet, one turns Gmail job alerts into
+recommendations, one crawls the web for networking events, panels and careers fairs
+and flags the ones where a company you've applied to will be present, and one searches
+job boards for openings worth applying to.
 
 - **`prospect-backend/`** — .NET 10 API. CRUD, auth, and **owner of every database table**.
-- **`agent/`** — Python agent. FastAPI + APScheduler + LangGraph. Follow-up drafting and the event crawler.
+- **`agent/`** — Python agent. FastAPI + APScheduler + LangGraph. Follow-up drafting,
+  the event crawler, and the job crawler that feeds Recommendations.
 - **`clients/prospect/`** — Next.js 16 frontend.
 
 Architecture and design rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+New to the agents? Start with [`docs/AGENTS-ONBOARDING.md`](docs/AGENTS-ONBOARDING.md).
 
 ---
 
@@ -135,6 +138,32 @@ Eventbrite source skips itself and the HTML sources still run.
 
 ---
 
+## Running the job crawler
+
+Also every 12 hours once the agent is up. Openings land on the **Recommendations**
+page alongside the ones extracted from Gmail alerts, as the same accept/dismiss cards.
+No LLM key is needed for this one — every source returns structured data.
+
+```bash
+cd agent
+python3 crawl_jobs_now.py                       # every enabled source
+python3 crawl_jobs_now.py greenhouse-databricks # just one
+```
+
+Searches and boards are configured in [`agent/job_sources.yaml`](agent/job_sources.yaml).
+A Greenhouse or Lever entry needs only the board slug; a LinkedIn entry needs a query
+and a location.
+
+> **The LinkedIn source violates LinkedIn's robots.txt and Terms of Service.** It is
+> there for personal use on your own machine. It carries a request budget, request
+> spacing and a circuit breaker that backs off when LinkedIn refuses, but none of that
+> makes it permitted. Set `enabled: false` on the LinkedIn entries for any deployment
+> other than your own, and start with a Greenhouse or Lever source when you first try
+> the crawler. Those two use documented JSON APIs and honour robots.txt. The full
+> rationale is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §6.
+
+---
+
 ## Résumé PDF upload (optional)
 
 The résumé page accepts a PDF upload as well as pasted text. Uploads go
@@ -180,7 +209,7 @@ rejected with a message asking you to paste the text instead.
 ## Tests
 
 ```bash
-cd agent && python3 -m pytest              # 168 tests; needs a migrated database
+cd agent && python3 -m pytest              # 294 passed, 37 skipped; skips need a migrated database
 cd prospect-backend && dotnet test         # 14 tests
 cd clients/prospect && pnpm test           # 38 tests
 ```

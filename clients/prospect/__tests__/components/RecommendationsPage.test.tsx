@@ -73,3 +73,37 @@ test('shows empty state when there are no recommendations', async () => {
   renderPage()
   expect(await screen.findByText(/no recommendations/i)).toBeInTheDocument()
 })
+
+test('shows the source as a badge', async () => {
+  renderPage()
+  const sourceEl = await screen.findByText('jobs@acme.com')
+  expect(sourceEl).toBeInTheDocument()
+  expect(sourceEl).toHaveAttribute('data-slot', 'badge')
+})
+
+test('shows a crawler source name for crawled postings', async () => {
+  const { server } = await import('../mocks/server')
+  const { http, HttpResponse } = await import('msw')
+  const { mockRecommendation } = await import('../mocks/handlers')
+  const AGENT = process.env.NEXT_PUBLIC_AGENT_URL ?? 'http://localhost:8000'
+
+  server.use(
+    http.get(`${AGENT}/recommendations`, () =>
+      HttpResponse.json([
+        { ...mockRecommendation, source_sender: 'linkedin-frontend-syd' },
+      ]),
+    ),
+  )
+
+  renderPage()
+  const sourceEl = await screen.findByText('linkedin-frontend-syd')
+  expect(sourceEl).toBeInTheDocument()
+  expect(sourceEl).toHaveAttribute('data-slot', 'badge')
+})
+
+test('mentions both email alerts and the job crawler as sources', async () => {
+  renderPage()
+  await screen.findByText('Acme Corp')
+  expect(screen.getByText(/email alerts/i)).toBeInTheDocument()
+  expect(screen.getByText(/job crawler/i)).toBeInTheDocument()
+})

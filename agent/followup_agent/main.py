@@ -10,6 +10,9 @@ from followup_agent.events import crawl as events_crawl
 from followup_agent.events.clean import html_to_text
 from followup_agent.events.fetch import Fetcher
 from followup_agent.events.sources import build_sources
+from followup_agent.jobs import crawl as jobs_crawl
+from followup_agent.jobs.sources import build_job_sources
+from followup_agent.jobs.sources.linkedin import LinkedInClient
 
 settings = load_settings()
 
@@ -118,10 +121,39 @@ def _events_job():
         conn.close()
 
 
+# A second Fetcher rather than reusing _fetcher: events_user_agent announces
+# Prospect-EventCrawler, and a UA that misdescribes what it is doing is not an
+# honest UA. Greenhouse and Lever see this one; LinkedIn uses its own client.
+_jobs_fetcher = Fetcher(settings.jobs_user_agent)
+
+# One long-lived client so the circuit breaker's cooldown survives between runs.
+_linkedin_client = LinkedInClient(
+    max_requests=settings.jobs_max_requests_per_run)
+
+
+def _jobs_job():
+    conn = psycopg.connect(settings.database_url)
+    try:
+        _linkedin_client.begin_run()      # reset budget, spend one cooldown run
+        ids = jobs_crawl.run_jobs_batch(
+            conn,
+            sources=build_job_sources(settings, _jobs_fetcher, _linkedin_client),
+            user_id=settings.reco_user_id,
+        )
+        conn.commit()
+        print(f"[jobs] created {len(ids)} recommendation(s)")
+    except Exception as e:            # a bad crawl must not kill the scheduler
+        conn.rollback()
+        print(f"[jobs] batch failed: {e}")
+    finally:
+        conn.close()
+
+
 app = api.create_app(settings, conn_factory=_conn_factory, graph=graph)
 
 _sched = BackgroundScheduler()
 scheduler.start_nightly(_sched, _nightly_job)
 scheduler.start_interval(_sched, _reco_job, settings.reco_poll_minutes)
 scheduler.start_hours(_sched, _events_job, settings.events_poll_hours)
+scheduler.start_hours(_sched, _jobs_job, settings.jobs_poll_hours)
 _sched.start()
