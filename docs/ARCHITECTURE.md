@@ -1,8 +1,9 @@
 # Prospect — System Design
 
-A job-application tracker with two autonomous agents bolted on: one drafts
-follow-up emails for stale applications, one crawls the web for career events.
-Everything ships as a single container.
+A job-application tracker with four background agents bolted on: one drafts
+follow-up emails for stale applications, one turns Gmail job alerts into
+recommendations, one crawls the web for career events, and one crawls job boards
+for openings. Everything ships as a single container.
 
 This document assumes you already know the shape of the system. If you don't,
 read [`AGENTS-ONBOARDING.md`](AGENTS-ONBOARDING.md) first — it teaches the agent
@@ -31,6 +32,7 @@ graph TB
         Gmail["Gmail API"]
         LLM["LLM<br/>OpenAI-compatible"]
         Sites["Event sites<br/>UNSW · Eventbrite API"]
+        Boards["Job boards<br/>LinkedIn · Greenhouse · Lever"]
         SMTP["SMTP"]
     end
 
@@ -46,6 +48,7 @@ graph TB
     Agent --> Gmail
     Agent --> LLM
     Agent --> Sites
+    Agent --> Boards
     Agent --> SMTP
 
     Backend -.->|"signs JWT"| Agent
@@ -55,7 +58,7 @@ graph TB
     classDef ext fill:#2d2d2d,stroke:#888,color:#ddd
     class Caddy,Backend,Agent,Web svc
     class PG db
-    class Gmail,LLM,Sites,SMTP ext
+    class Gmail,LLM,Sites,Boards,SMTP ext
 ```
 
 **Why one container.** Four processes under supervisord behind Caddy, deployed
@@ -241,7 +244,77 @@ as "Monzo Bank".
 
 ---
 
-## 5. Design decisions worth defending
+## 5. Job crawler — the same four gates, no LLM
+
+```mermaid
+flowchart TD
+    Start(["Every 12h"]) --> Src{"Source type?"}
+
+    Src -->|"greenhouse · lever"| API["Fetcher<br/>robots.txt · honest UA<br/>2s/host · 10s timeout"]
+    Src -->|"linkedin"| LI["LinkedInClient<br/><b>robots.txt exception</b><br/>browser UA · request budget<br/>2s spacing · circuit breaker"]
+
+    API --> Parse["JSON → JobPosting"]
+    LI --> Regex["regex card parse<br/>→ JobPosting"]
+
+    Parse --> G1
+    Regex --> G1
+
+    G1{"<b>Gate 1</b><br/>source_message_id<br/>already stored?"} -->|yes| Skip1(["skip"])
+    G1 -->|no| G2{"<b>Gate 2</b><br/>company and role<br/>both non-empty?"}
+    G2 -->|no| Skip2(["skip"])
+    G2 -->|yes| G3{"<b>Gate 3</b><br/>already on the board<br/>or awaiting a decision?"}
+    G3 -->|yes| Skip3(["skip"])
+    G3 -->|no| G4{"<b>Gate 4</b><br/>same role from<br/>a second source?"}
+    G4 -->|yes| Skip4(["skip"])
+    G4 -->|no| Store[("INSERT recommendations")]
+
+    style G1 fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style G2 fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style G3 fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style G4 fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style LI fill:#4a1f1f,stroke:#c44,color:#fff
+    style Store fill:#3d2b1f,stroke:#c47f3d,color:#fff
+```
+
+**It added no tables.** A posting is a `recommendations` row — the same table the
+Gmail poller writes and the same accept/dismiss cards the UI already rendered.
+The key is a namespaced `source_message_id` (`linkedin:4426311357`), a column that
+already carried the UNIQUE constraint an idempotent write needs. The whole feature
+is `git diff main..HEAD -- prospect-backend/` returning empty.
+
+That reuse is the reason the design is worth a section rather than a paragraph: a
+job posting and an emailed job alert are the same thing arriving by a different
+road, so giving them a second table would have meant a second UI, a second dedup
+rule and a second accept path.
+
+**`source_sender` holds a display name, not a config identifier.** The frontend
+copies that field into the created `JobApplication.source`, permanently. Storing
+`linkedin-frontend-syd` there would mean renaming a search in the YAML orphans
+every application it ever produced, so sources expose `display_name`
+(`Greenhouse · Databricks`) alongside the `name` used for configuration.
+
+**No LLM anywhere on this path.** All three sources return structured data
+already, so `JobPosting` is a plain dataclass rather than a pydantic model —
+there is no hallucination to validate against and no prompt to inject into. The
+`url`-never-from-the-LLM rule that §4 has to enforce by omitting a field is here
+just a property of the pipeline.
+
+**The gate ordering is the cost model,** exactly as in §4. Gate 1 runs before any
+per-posting work, so re-reading the same search every 12 hours is nearly free,
+and there is no sync cursor for the same reason the event crawler has none.
+
+**Failure isolation is two-deep.** A source whose board 404s is one log line, not
+a dead run; a malformed posting is one log line, not a dead source. The
+per-posting `try` deliberately stops short of the INSERT — a raising write must
+reach the caller rather than be caught mid-transaction, which would leave every
+later write in the run silently degraded to zero.
+
+LinkedIn's robots.txt exception, the compensating rate discipline, and how to
+switch it off are in §6.
+
+---
+
+## 6. Design decisions worth defending
 
 | Decision | Why |
 |---|---|
@@ -255,7 +328,7 @@ as "Monzo Bank".
 
 ---
 
-## 6. Known limits
+## 7. Known limits
 
 - **Single container, single worker.** Vertical scaling only. The split points
   are Caddy's routing table and the in-process scheduler.
